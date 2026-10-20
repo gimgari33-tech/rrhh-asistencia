@@ -1,0 +1,200 @@
+# Credenciales y configuración local: NUNCA subir a GitHub
+.env
+*.env
+secrets.toml
+
+# Bases de datos con datos reales de empleados
+*.db
+*.sqlite
+*.sqlite3
+
+# Datos reales (Excel, CSV, fotos del libro)
+datos/
+*.xlsx
+*.csv
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor
+.vscode/
+
+# RRHH Asistencia
+
+Aplicación web (usable desde el celular) para que RRHH controle la asistencia, las horas trabajadas, los cursos obligatorios y la eficiencia de los empleados, con un período laboral del **15 al 15** de cada mes.
+
+> Proyecto académico — Prácticas profesionales / Proyecto integrador.
+
+## Problema
+
+Hoy la asistencia se anota en un libro manual en el local y las ausencias llegan por mail. Calcular horas extra y faltantes, controlar los cursos obligatorios y saber quién cumple es lento y propenso a errores.
+
+## Solución (MVP)
+
+- Base de datos de empleados.
+- Carga diaria o semanal de 6 estados: presente, falta sin aviso, falta con aviso, médico, franco y vacaciones, con hora de entrada y salida.
+- Saldo de horas del período 15 al 15.
+- Control de cursos obligatorios (quién los hizo y quién no).
+- Dashboard con el índice de eficiencia por empleado.
+- Saludo de cumpleaños por mail.
+
+## Índice de eficiencia
+
+Eficiencia = asistencia + puntualidad + cursos obligatorios (pesos propuestos: 40 % / 30 % / 30 %). Es una ayuda para decidir, no una sanción automática.
+
+## Documentación
+
+| Punto | Documento |
+|---|---|
+| 1. Canvas | [docs/01-canvas.md](docs/01-canvas.md) |
+| 2. Stakeholders y propuesta de valor | [docs/02-stakeholders.md](docs/02-stakeholders.md) |
+| 3. Alcance del MVP | [docs/03-alcance-mvp.md](docs/03-alcance-mvp.md) |
+| 4. Requisitos funcionales | [docs/04-requisitos-funcionales.md](docs/04-requisitos-funcionales.md) |
+| 5. Reglas de negocio | [docs/05-reglas-de-negocio.md](docs/05-reglas-de-negocio.md) |
+
+## Tecnología prevista
+
+Python + Streamlit (interfaz web), SQLite (base de datos), arquitectura limpia en 4 capas. Detalle en etapas siguientes.
+
+## Estado
+
+- [x] Canvas
+- [x] Stakeholders y propuesta de valor
+- [x] Alcance del MVP
+- [x] Requisitos funcionales (borrador)
+- [ ] Requisitos no funcionales
+- [ ] Criterios de aceptación y casos de uso
+- [ ] Arquitectura limpia
+- [ ] Roadmap técnico
+- [ ] Scrum: user stories, backlog y sprints
+
+## Datos y privacidad
+
+Este repositorio **no contiene datos reales de empleados** ni credenciales. Los datos personales están regulados por la Ley 25.326 (Argentina).
+
+# 1. Canvas: problema, solución y métricas clave
+
+## Problema
+
+- El control de asistencia se hace en un libro manual en el local y es lento.
+- Es difícil calcular horas extra y faltantes dentro del período del 15 al 15.
+- No hay una vista clara de quién cumple y quién no.
+- Es difícil saber quién hizo los cursos obligatorios.
+- Los datos de los empleados están dispersos (Excel, papel, mails).
+
+## Solución
+
+Una app web, usable desde el celular, con base de datos de empleados que permite:
+
+- Registrar el estado diario de cada empleado.
+- Calcular automáticamente el saldo de horas del período.
+- Controlar los cursos obligatorios.
+- Mostrar un dashboard de eficiencia.
+- Enviar un saludo automático de cumpleaños.
+
+## Métricas clave
+
+| Métrica | Cálculo | Dato necesario |
+|---|---|---|
+| Asistencia | días presente ÷ días que debía trabajar | estado de cada día |
+| Puntualidad | días que llegó a horario ÷ días presente | hora de entrada |
+| Cursos | cursos obligatorios hechos ÷ cursos asignados | tabla de cursos |
+| Saldo de horas | horas trabajadas − horas debidas (período 15 al 15) | entradas, salidas y horas debidas |
+| Eficiencia | combinación ponderada de asistencia, puntualidad y cursos (40/30/30) | las tres anteriores |
+
+# 4. Requisitos funcionales (FR) — borrador
+
+Qué debe hacer el sistema.
+
+| Grupo | ID | El sistema debe permitir... |
+|---|---|---|
+| Empleados | FR-01 | Dar de alta, modificar y dar de baja empleados (nombre, fecha de nacimiento, mail, teléfono, local) |
+| | FR-02 | Definir las horas que cada empleado debe trabajar por día |
+| Asistencia | FR-03 | Registrar por día uno de 6 estados: presente, falta sin aviso, falta con aviso, médico, franco, vacaciones |
+| | FR-04 | Registrar la hora de entrada y de salida |
+| | FR-05 | Registrar el motivo en faltas con aviso y médico |
+| | FR-06 | Cargar un solo día o una semana completa |
+| | FR-07 | Corregir un registro dejando constancia de quién lo cambió y cuándo |
+| Horas | FR-08 | Calcular el saldo de horas del período vigente del 15 al 15, aplicando las reglas de negocio |
+| | FR-09 | Mostrar horas extra a favor y horas faltantes por empleado |
+| Cursos | FR-10 | Registrar los cursos obligatorios |
+| | FR-11 | Marcar quién completó cada curso y en qué fecha |
+| | FR-12 | Listar los empleados con cursos pendientes |
+| Dashboard | FR-13 | Calcular el índice de eficiencia por empleado y período |
+| | FR-14 | Filtrar por período, local y empleado |
+| Cumpleaños | FR-15 | Enviar un mail de saludo el día del cumpleaños |
+| Acceso | FR-16 | Ingresar con usuario y contraseña, con roles (RRHH, encargado, gerencia) |
+| | FR-17 | Usarse desde el navegador del celular |
+
+## Pendiente
+
+- Definir si los empleados tienen horario fijo o turnos rotativos (afecta FR-02 y FR-08).
+- Criterios de aceptación y casos de uso (punto 2.3).
+
+# 2. Stakeholders y propuesta de valor
+
+| Stakeholder | Qué hace con el sistema | Propuesta de valor |
+|---|---|---|
+| RRHH (usuario principal) | Carga estados, revisa saldos y cursos | Deja de hacer cuentas a mano y ve todo en un solo lugar |
+| Encargado del local | Registra la asistencia del día o la semana desde el celular | Reemplaza el libro manual y carga más rápido |
+| Gerencia / dueños | Mira el dashboard de eficiencia | Decide con datos y no por impresión |
+| Empleados | Son los datos del sistema; reciben el saludo de cumpleaños | Saldo de horas claro y un saludo en su día |
+| Liquidación de sueldos | Usa horas extra y descuentos del período 15 al 15 | Recibe el cálculo ya hecho |
+| Profesor | Evalúa el proyecto | Trabajo completo y fundamentado |
+
+## Consideración ética y legal
+
+El sistema guarda datos personales de empleados (Ley 25.326, Argentina). El índice de eficiencia es una ayuda para decidir y no se usa como sanción automática.
+
+# 5. Reglas de negocio
+
+Las reglas de negocio son políticas de la empresa que el sistema debe respetar.
+
+## Período laboral
+
+El mes vigente va del **15 de un mes al 14 del mes siguiente** (período del 15 al 15).
+
+## Estados diarios
+
+| Estado | ¿Baja el índice de asistencia? | ¿Cómo afecta el saldo de horas? |
+|---|---|---|
+| Presente | No | Suma las horas trabajadas (las extra quedan a favor) |
+| Falta sin aviso | Sí | Descuenta las horas del día |
+| Falta con aviso | Sí | Neutro: no se penaliza y no se compensa con horas extra |
+| Médico (falta justificada) | No | Neutro |
+| Franco | No | Neutro |
+| Vacaciones | No | Neutro |
+
+## Índice de eficiencia
+
+- Asistencia = días presente ÷ días que debía trabajar. Franco, vacaciones y médico no cuentan como días que debía trabajar. La falta con aviso sí cuenta.
+- Puntualidad = días que llegó a horario ÷ días presente.
+- Cursos = cursos obligatorios completados ÷ cursos obligatorios asignados.
+- Eficiencia = 40 % asistencia + 30 % puntualidad + 30 % cursos (pesos a confirmar).
+
+# 3. Alcance del MVP
+
+El MVP (producto mínimo viable) es la versión más chica que ya resuelve el problema principal.
+
+## Entra en la versión 1
+
+- Base de datos de empleados.
+- Carga diaria de los 6 estados con hora de entrada y salida (carga manual).
+- Cálculo del saldo de horas del período 15 al 15.
+- Tabla de cursos obligatorios (quién los hizo y quién no).
+- Dashboard con el índice de eficiencia (asistencia, puntualidad y cursos).
+- Acceso desde el celular a través del navegador.
+- Saludo de cumpleaños por mail.
+
+## Queda para versiones futuras
+
+| Función | Motivo | Fase |
+|---|---|---|
+| Leer los horarios desde la foto del libro (OCR) | La letra a mano se lee con errores; requiere revisión humana | 2 |
+| Leer los mails de ausencias y proponer la falta con su motivo (NLP) | Los avisos hoy llegan por mail al local | 2 |
+| Saludo por WhatsApp | Requiere la API oficial de WhatsApp Business (aprobación y costo) | 2 |
+| Predicciones con ML (por ejemplo, anticipar ausencias) | Necesita datos históricos acumulados | 3 |
+| App nativa para celular | La web ya funciona desde el celular | 3 |
