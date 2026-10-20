@@ -1,0 +1,23 @@
+# Credenciales y configuración local: NUNCA subir a GitHub
+.env
+*.env
+secrets.toml
+
+# Bases de datos con datos reales de empleados
+*.db
+*.sqlite
+*.sqlite3
+
+# Datos reales (Excel, CSV, fotos del libro)
+datos/
+*.xlsx
+*.csv
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor
+.vscode/
