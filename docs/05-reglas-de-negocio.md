@@ -17,6 +17,15 @@ El mes vigente va del **15 de un mes al 14 del mes siguiente** (período del 15 
 | Franco | No | Neutro |
 | Vacaciones | No | Neutro |
 
+## Banco de horas
+
+- Cada empleado comienza con un saldo de **0 horas**.
+- Una acumulación suma horas al saldo y conserva un movimiento con fecha y detalle.
+- Una devolución representa horas ya compensadas; se resta del saldo y queda en el historial.
+- El sistema rechaza devoluciones que dejen el saldo por debajo de cero.
+- Los saldos se muestran por empleado y cada movimiento conserva el saldo resultante.
+- La carga es manual hasta definir cómo se calcularán las horas trabajadas según cada jornada.
+
 ## Índice de eficiencia
 
 - Asistencia = días presente ÷ días que debía trabajar. Franco, vacaciones y médico no cuentan como días que debía trabajar. La falta con aviso sí cuenta.

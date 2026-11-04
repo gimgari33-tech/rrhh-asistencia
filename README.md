@@ -1,52 +1,51 @@
 # RRHH Asistencia
 
-Aplicación web (usable desde el celular) para que RRHH controle la asistencia, las horas trabajadas, los cursos obligatorios y la eficiencia de los empleados, con un período laboral del **15 al 15** de cada mes.
+Aplicación web para registrar asistencia y consultar el banco de horas acumuladas por empleado. La interfaz funciona en celular y escritorio.
 
-> Proyecto académico — Prácticas profesionales / Proyecto integrador.
+## Funciones disponibles
 
-## Problema
+- Registrar asistencia por empleado, fecha y estado.
+- Crear empleados con banco de horas inicial en cero.
+- Consultar el saldo acumulado de cada empleado y el total disponible.
+- Agregar horas al banco con un detalle opcional.
+- Registrar devoluciones, descontando las horas del saldo.
+- Consultar el historial con el saldo resultante de cada movimiento.
+- Probar la aplicación en modo demo con nombres ficticios y datos guardados solo en el navegador.
 
-Hoy la asistencia se anota en un libro manual en el local y las ausencias llegan por mail. Calcular horas extra y faltantes, controlar los cursos obligatorios y saber quién cumple es lento y propenso a errores.
+Las horas se guardan con hasta dos decimales. El sistema rechaza devoluciones superiores al saldo disponible. La carga de horas es manual; no se calcula automáticamente a partir de asistencia hasta definir los horarios y reglas de jornada.
 
-## Solución (MVP)
+## Probar
 
-- Base de datos de empleados.
-- Carga diaria o semanal de 6 estados: presente, falta sin aviso, falta con aviso, médico, franco y vacaciones, con hora de entrada y salida.
-- Saldo de horas del período 15 al 15.
-- Control de cursos obligatorios (quién los hizo y quién no).
-- Dashboard con el índice de eficiencia por empleado.
-- Saludo de cumpleaños por mail.
+Abrí `index.html` o visitá la página publicada en GitHub Pages. Elegí **Probar demo pública**. La demo no usa ni modifica datos reales; los cambios quedan en el almacenamiento local del navegador.
 
-## Índice de eficiencia
+## Conectar Firebase para uso interno
 
-Eficiencia = asistencia + puntualidad + cursos obligatorios (pesos propuestos: 40 % / 30 % / 30 %). Es una ayuda para decidir, no una sanción automática.
+La app puede usar Firebase Authentication y Firestore. Para habilitarlo:
 
-## Documentación
+1. Copiá `firebase-config.example.js` como `firebase-config.js`.
+2. Reemplazá los valores de ejemplo por la configuración web de tu proyecto Firebase.
+3. Habilitá Firebase Authentication con correo y contraseña.
+4. Configurá reglas de Firestore que permitan acceso solo a usuarios autorizados.
 
-| Punto | Documento |
-|---|---|
-| 1. Canvas | [docs/01-canvas.md](docs/01-canvas.md) |
-| 2. Stakeholders y propuesta de valor | [docs/02-stakeholders.md](docs/02-stakeholders.md) |
-| 3. Alcance del MVP | [docs/03-alcance-mvp.md](docs/03-alcance-mvp.md) |
-| 4. Requisitos funcionales | [docs/04-requisitos-funcionales.md](docs/04-requisitos-funcionales.md) |
-| 5. Reglas de negocio | [docs/05-reglas-de-negocio.md](docs/05-reglas-de-negocio.md) |
+`firebase-config.js` está excluido de Git para evitar publicar la configuración local. Nunca agregues claves de cuenta de servicio ni datos reales de empleados al repositorio.
 
-## Tecnología prevista
+### Colecciones de Firestore
 
-Python + Streamlit (interfaz web), SQLite (base de datos), arquitectura limpia en 4 capas. Detalle en etapas siguientes.
+- `empleados/{empleadoId}`: nombre y fecha de creación.
+- `bancos_horas/{empleadoId}`: saldo actual de horas.
+- `movimientos_banco_horas/{movimientoId}`: empleado, tipo, horas, detalle, fecha y saldo resultante.
+- `asistencia/{registroId}`: empleado, fecha, estado y fecha de carga.
 
-## Estado
+Cada acumulación o devolución actualiza el saldo y crea el movimiento dentro de una transacción. La demo pública usa empleados ficticios y `localStorage`, sin conexión a Firestore.
 
-- [x] Canvas
-- [x] Stakeholders y propuesta de valor
-- [x] Alcance del MVP
-- [x] Requisitos funcionales (borrador)
-- [ ] Requisitos no funcionales
-- [ ] Criterios de aceptación y casos de uso
-- [ ] Arquitectura limpia
-- [ ] Roadmap técnico
-- [ ] Scrum: user stories, backlog y sprints
+## Documentación funcional
 
-## Datos y privacidad
+- [Canvas](docs/01-canvas.md)
+- [Stakeholders](docs/02-stakeholders.md)
+- [Alcance del MVP](docs/03-alcance-mvp.md)
+- [Requisitos funcionales](docs/04-requisitos-funcionales.md)
+- [Reglas de negocio](docs/05-reglas-de-negocio.md)
 
-Este repositorio **no contiene datos reales de empleados** ni credenciales. Los datos personales están regulados por la Ley 25.326 (Argentina).
+## Privacidad
+
+El repositorio no debe contener datos personales de empleados, planillas médicas, exportaciones de Firestore ni configuraciones locales. Los archivos de datos y `firebase-config.js` están ignorados por Git.

@@ -12,6 +12,8 @@ secrets.toml
 datos/
 *.xlsx
 *.csv
+empleados_iniciales.json
+firebase-config.js
 
 # Python
 __pycache__/

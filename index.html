@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Control de asistencia y banco de horas para empleados.">
+  <title>RRHH Asistencia</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="firebase-config.js" onload="window.firebaseConfigLoaded = true" onerror="window.firebaseConfigLoaded = false"></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main class="page-shell">
+    <section id="access-screen" class="access-card">
+      <div class="brand-mark" aria-hidden="true">RH</div>
+      <p class="eyebrow">RRHH · ASISTENCIA</p>
+      <h1>Control de empleados</h1>
+      <p class="intro">Registrá asistencia y consultá el banco de horas de cada persona.</p>
+
+      <form id="login-form" class="stack-form">
+        <label for="email">Correo de acceso</label>
+        <input id="email" type="email" autocomplete="username" placeholder="nombre@empresa.com" required>
+        <label for="password">Contraseña</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <button class="button button-primary" type="submit">Ingresar</button>
+      </form>
+
+      <div class="divider"><span>o</span></div>
+      <button id="demo-button" class="button button-secondary" type="button">Probar demo pública</button>
+      <p id="login-error" class="message error" role="alert"></p>
+      <p class="privacy-note">La demo usa nombres ficticios y guarda los cambios solo en este navegador.</p>
+    </section>
+
+    <section id="app-screen" class="app-screen hidden">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">RRHH · ASISTENCIA</p>
+          <h1>Control de empleados</h1>
+        </div>
+        <div class="topbar-actions">
+          <span id="mode-badge" class="mode-badge"></span>
+          <span id="user-display" class="user-display"></span>
+          <button id="logout-button" class="button button-quiet" type="button">Salir</button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <nav class="sidebar" aria-label="Secciones">
+          <button class="nav-button active" data-target="attendance-panel" type="button">Asistencia</button>
+          <button class="nav-button" data-target="hours-panel" type="button">Banco de horas</button>
+        </nav>
+
+        <div class="content-area">
+          <section id="attendance-panel" class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">REGISTRO DIARIO</p>
+                <h2>Asistencia</h2>
+                <p>Seleccioná a la persona, la fecha y el estado.</p>
+              </div>
+            </div>
+            <form id="attendance-form" class="form-card">
+              <label for="attendance-employee">Empleado</label>
+              <select id="attendance-employee" required></select>
+              <label for="attendance-date">Fecha</label>
+              <input id="attendance-date" type="date" required>
+              <label for="attendance-status">Estado</label>
+              <select id="attendance-status" required>
+                <option value="Presente">Presente</option>
+                <option value="Franco">Franco</option>
+                <option value="Falta sin aviso">Falta sin aviso</option>
+                <option value="Falta con aviso">Falta con aviso</option>
+                <option value="Médico">Médico</option>
+                <option value="Vacaciones">Vacaciones</option>
+              </select>
+              <button class="button button-primary" type="submit">Guardar asistencia</button>
+            </form>
+            <p id="attendance-message" class="message" role="status"></p>
+          </section>
+
+          <section id="hours-panel" class="panel hidden">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">SALDOS Y MOVIMIENTOS</p>
+                <h2>Banco de horas</h2>
+                <p>Las acumulaciones suman al saldo y las devoluciones descuentan horas disponibles.</p>
+              </div>
+            </div>
+
+            <div class="summary-grid">
+              <article class="summary-card">
+                <span>Empleados</span>
+                <strong id="employee-count">0</strong>
+              </article>
+              <article class="summary-card">
+                <span>Horas disponibles</span>
+                <strong id="total-hours">0,00 h</strong>
+              </article>
+            </div>
+
+            <div class="section-grid">
+              <form id="employee-form" class="form-card compact-card">
+                <h3>Agregar empleado</h3>
+                <label for="employee-name">Nombre</label>
+                <input id="employee-name" type="text" maxlength="100" placeholder="Nombre del empleado" required>
+                <button class="button button-secondary" type="submit">Crear banco en cero</button>
+              </form>
+
+              <form id="movement-form" class="form-card compact-card">
+                <h3>Registrar movimiento</h3>
+                <label for="movement-employee">Empleado</label>
+                <select id="movement-employee" required></select>
+                <label for="movement-hours">Horas</label>
+                <input id="movement-hours" type="number" min="0.01" max="99999999.99" step="0.01" placeholder="Ej. 2,5" required>
+                <label for="movement-note">Detalle (opcional)</label>
+                <input id="movement-note" type="text" maxlength="250" placeholder="Motivo del movimiento">
+                <div class="button-row">
+                  <button class="button button-primary" type="submit" data-kind="ACUMULACION">Acumular</button>
+                  <button class="button button-warning" type="submit" data-kind="DEVOLUCION">Registrar devolución</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="table-card">
+              <div class="table-heading">
+                <div>
+                  <h3>Saldo por empleado</h3>
+                  <p>Seleccioná un nombre para filtrar sus movimientos.</p>
+                </div>
+              </div>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr><th>Empleado</th><th>Saldo disponible</th><th>Acción</th></tr></thead>
+                  <tbody id="balances-body"></tbody>
+                </table>
+              </div>
+              <p id="empty-employees" class="empty-state hidden">Todavía no hay empleados. Agregá uno para iniciar su banco de horas.</p>
+            </div>
+
+            <div class="table-card">
+              <div class="table-heading">
+                <div>
+                  <h3 id="movement-heading">Movimientos recientes</h3>
+                  <p>El historial muestra el saldo que quedó después de cada operación.</p>
+                </div>
+                <button id="show-all-movements" class="text-button hidden" type="button">Ver todos</button>
+              </div>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr><th>Fecha</th><th>Empleado</th><th>Movimiento</th><th>Horas</th><th>Saldo resultante</th><th>Detalle</th></tr></thead>
+                  <tbody id="movements-body"></tbody>
+                </table>
+              </div>
+              <p id="empty-movements" class="empty-state hidden">Aún no hay movimientos registrados.</p>
+            </div>
+            <p id="hours-message" class="message" role="status"></p>
+          </section>
+        </div>
+      </div>
+      <footer class="app-footer">En producción, configurá Firebase y sus reglas de acceso antes de cargar datos reales.</footer>
+    </section>
+  </main>
+</body>
+</html>

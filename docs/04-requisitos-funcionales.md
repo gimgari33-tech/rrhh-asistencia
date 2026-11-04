@@ -21,6 +21,9 @@ Qué debe hacer el sistema.
 | Cumpleaños | FR-15 | Enviar un mail de saludo el día del cumpleaños |
 | Acceso | FR-16 | Ingresar con usuario y contraseña, con roles (RRHH, encargado, gerencia) |
 | | FR-17 | Usarse desde el navegador del celular |
+| Banco de horas | FR-18 | Mostrar el saldo acumulado de horas disponibles por empleado |
+| | FR-19 | Registrar acumulaciones y devoluciones con fecha, detalle y saldo resultante |
+| | FR-20 | Rechazar una devolución que supere el saldo disponible |
 
 ## Pendiente
 
