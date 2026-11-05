@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /empleados/{empleadoId} {
+      allow read, create, update: if signedIn();
+      allow delete: if false;
+    }
+
+    match /bancos_horas/{empleadoId} {
+      allow read, create, update: if signedIn();
+      allow delete: if false;
+    }
+
+    match /movimientos_banco_horas/{movimientoId} {
+      allow read, create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    match /asistencia/{registroId} {
+      allow read, create: if signedIn();
+      allow update, delete: if false;
+    }
+  }
+}

@@ -18,16 +18,17 @@ Las horas se guardan con hasta dos decimales. El sistema rechaza devoluciones su
 
 Abrí `index.html` o visitá la página publicada en GitHub Pages. Elegí **Probar demo pública**. La demo no usa ni modifica datos reales; los cambios quedan en el almacenamiento local del navegador.
 
-## Conectar Firebase para uso interno
+## Base de datos en la nube
 
-La app puede usar Firebase Authentication y Firestore. Para habilitarlo:
+La app usa Firebase Authentication y Cloud Firestore del proyecto `empleados-cbf0b`. La base Firestore estándar está en `southamerica-east1` (São Paulo). El archivo `firebase-config.js` contiene la configuración pública de la app web para que el sitio pueda conectarse; no contiene una clave de cuenta de servicio. El acceso a los datos lo controlan las reglas de `firestore.rules`, que requieren iniciar sesión con una cuenta habilitada en Firebase Authentication.
 
-1. Copiá `firebase-config.example.js` como `firebase-config.js`.
-2. Reemplazá los valores de ejemplo por la configuración web de tu proyecto Firebase.
-3. Habilitá Firebase Authentication con correo y contraseña.
-4. Configurá reglas de Firestore que permitan acceso solo a usuarios autorizados.
+Para publicar o actualizar las reglas, instalá Firebase CLI e iniciá sesión con una cuenta autorizada:
 
-`firebase-config.js` está excluido de Git para evitar publicar la configuración local. Nunca agregues claves de cuenta de servicio ni datos reales de empleados al repositorio.
+```sh
+firebase deploy --only firestore:rules --project empleados-cbf0b
+```
+
+Creá en Firebase Authentication las cuentas de acceso que correspondan. No cargues datos reales de empleados hasta definir y revisar quiénes tendrán acceso. Nunca agregues claves de cuenta de servicio ni datos personales reales al repositorio.
 
 ### Colecciones de Firestore
 
@@ -48,4 +49,4 @@ Cada acumulación o devolución actualiza el saldo y crea el movimiento dentro d
 
 ## Privacidad
 
-El repositorio no debe contener datos personales de empleados, planillas médicas, exportaciones de Firestore ni configuraciones locales. Los archivos de datos y `firebase-config.js` están ignorados por Git.
+El repositorio no debe contener datos personales de empleados, planillas médicas, exportaciones de Firestore ni claves privadas o de cuenta de servicio. La configuración web de Firebase es pública; las reglas de Firestore protegen los datos.
