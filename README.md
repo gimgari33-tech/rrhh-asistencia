@@ -20,7 +20,7 @@ Abrí `index.html` o visitá la página publicada en GitHub Pages. Elegí **Prob
 
 ## Base de datos en la nube
 
-La app usa Firebase Authentication y Cloud Firestore del proyecto `empleados-cbf0b`. La base Firestore estándar está en `southamerica-east1` (São Paulo). El archivo `firebase-config.js` contiene la configuración pública de la app web para que el sitio pueda conectarse; no contiene una clave de cuenta de servicio. El acceso a los datos lo controlan las reglas de `firestore.rules`, que requieren iniciar sesión con una cuenta habilitada en Firebase Authentication.
+La app usa Firebase Authentication y Cloud Firestore del proyecto `empleados-cbf0b`. La base Firestore estándar está en `southamerica-east1` (São Paulo). El archivo `firebase-config.js` contiene la configuración pública de la app web para que el sitio pueda conectarse; no contiene una clave de cuenta de servicio. Las reglas de `firestore.rules` requieren una cuenta autenticada y autorizada individualmente.
 
 Para publicar o actualizar las reglas, instalá Firebase CLI e iniciá sesión con una cuenta autorizada:
 
@@ -28,7 +28,7 @@ Para publicar o actualizar las reglas, instalá Firebase CLI e iniciá sesión c
 firebase deploy --only firestore:rules --project empleados-cbf0b
 ```
 
-Creá en Firebase Authentication las cuentas de acceso que correspondan. No cargues datos reales de empleados hasta definir y revisar quiénes tendrán acceso. Nunca agregues claves de cuenta de servicio ni datos personales reales al repositorio.
+Para habilitar a una persona, creá su cuenta en Firebase Authentication y luego, desde Firebase Console, creá `usuarios_autorizados/{uid}` con el campo booleano `activo: true`, usando el UID de esa cuenta como ID del documento. Solo los usuarios con ese documento activo pueden leer o cambiar los datos. No cargues datos reales de empleados hasta definir y revisar quiénes tendrán acceso. Nunca agregues claves de cuenta de servicio ni datos personales reales al repositorio.
 
 ### Colecciones de Firestore
 
@@ -49,4 +49,4 @@ Cada acumulación o devolución actualiza el saldo y crea el movimiento dentro d
 
 ## Privacidad
 
-El repositorio no debe contener datos personales de empleados, planillas médicas, exportaciones de Firestore ni claves privadas o de cuenta de servicio. La configuración web de Firebase es pública; las reglas de Firestore protegen los datos.
+El repositorio no debe contener datos personales de empleados, planillas médicas, exportaciones de Firestore ni claves privadas o de cuenta de servicio. La configuración web de Firebase es pública; las reglas de Firestore limitan el acceso a usuarios autorizados individualmente.
