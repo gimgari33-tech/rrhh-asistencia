@@ -2,6 +2,8 @@
 .env
 *.env
 secrets.toml
+firebase-adminsdk-*.json
+*service-account*.json
 
 # Bases de datos con datos reales de empleados
 *.db

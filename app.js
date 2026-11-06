@@ -6,6 +6,7 @@
     mode: "demo",
     db: null,
     auth: null,
+    currentUser: null,
     employees: [],
     balances: {},
     movements: [],
@@ -53,8 +54,12 @@
   function showApplication(userLabel) {
     setScreen(true);
     byId("user-display").textContent = userLabel || "";
-    byId("mode-badge").textContent = state.mode === "demo" ? "DEMO LOCAL" : "FIREBASE";
+    byId("mode-badge").textContent = state.mode === "demo" ? "DEMO LOCAL" : ((state.currentUser && state.currentUser.rol) || "FIRESTORE API");
     byId("mode-badge").classList.toggle("demo-badge", state.mode === "demo");
+    var canManage = state.mode === "demo" || (state.currentUser && state.currentUser.rol === "SUPERADMIN");
+    ["attendance-form", "employee-form", "movement-form"].forEach(function (formId) {
+      byId(formId).classList.toggle("hidden", !canManage);
+    });
     render();
   }
 
@@ -91,7 +96,7 @@
     bindEvents();
 
     if (window.firebase && window.firebase.apps && window.firebase.apps.length > 0) {
-      initializeFirebaseMode();
+      initializeBackendMode();
     } else {
       byId("login-form").classList.add("hidden");
       byId("login-error").textContent = "Firebase no está configurado. Podés entrar a la demo sin datos reales.";
@@ -122,30 +127,73 @@
     });
   }
 
-  function initializeFirebaseMode() {
-    state.mode = "firebase";
+  function initializeBackendMode() {
+    state.mode = "flask";
     try {
       state.auth = window.firebase.auth();
-      state.db = window.firebase.firestore();
+      state.db = null;
       byId("login-form").classList.remove("hidden");
       byId("login-error").textContent = "";
       state.auth.onAuthStateChanged(function (user) {
         if (!user) {
+          state.currentUser = null;
           setScreen(false);
           return;
         }
-        loadFirebaseState().then(function () {
-          showApplication(user.email || "Usuario autenticado");
+        loadBackendUser().then(function () {
+          return loadBackendState();
+        }).then(function () {
+          showApplication((state.currentUser && state.currentUser.nombre) || user.email || "Usuario autenticado");
         }).catch(function (error) {
           setScreen(false);
-          showMessage(byId("login-error"), "No se pudieron cargar los datos: " + error.message, true);
+          showMessage(byId("login-error"), "No se pudo validar el acceso al backend: " + error.message, true);
+          state.auth.signOut();
         });
+      });
+      fetchJson("/api/health").catch(function () {
+        showMessage(byId("login-error"), "El backend Flask no está disponible. Podés usar la demo sin datos reales.", true);
       });
     } catch (error) {
       state.mode = "demo";
       byId("login-form").classList.add("hidden");
       byId("login-error").textContent = "Firebase no está configurado. Podés entrar a la demo sin datos reales.";
     }
+  }
+
+  function buildApiHeaders(extraHeaders) {
+    var headers = Object.assign({}, extraHeaders || {});
+    var user = state.auth && state.auth.currentUser;
+    if (!user) {
+      return Promise.resolve(headers);
+    }
+    return user.getIdToken().then(function (token) {
+      headers.Authorization = "Bearer " + token;
+      return headers;
+    });
+  }
+
+  function fetchJson(path, options) {
+    var requestOptions = Object.assign({}, options || {});
+    return buildApiHeaders(requestOptions.headers).then(function (headers) {
+      requestOptions.headers = headers;
+      return fetch(path, requestOptions);
+    }).then(function (response) {
+      var contentType = response.headers.get("content-type") || "";
+      var payloadPromise = contentType.indexOf("application/json") !== -1 ? response.json() : response.text();
+      return payloadPromise.then(function (payload) {
+        if (!response.ok) {
+          var message = payload && typeof payload === "object" ? (payload.error || payload.message) : payload;
+          throw new Error(message || "Error del backend (" + response.status + ").");
+        }
+        return payload;
+      });
+    });
+  }
+
+  function loadBackendUser() {
+    return fetchJson("/api/auth/me").then(function (user) {
+      state.currentUser = user;
+    });
   }
 
   function signIn(event) {
@@ -161,9 +209,10 @@
   }
 
   function signOut() {
-    if (state.mode === "firebase" && state.auth) {
+    if (state.auth && state.auth.currentUser) {
       state.auth.signOut();
     } else {
+      state.currentUser = null;
       setScreen(false);
     }
   }
@@ -172,6 +221,7 @@
     state.mode = "demo";
     state.db = null;
     state.auth = null;
+    state.currentUser = null;
     var data = loadDemoState();
     state.employees = data.employees;
     state.balances = data.balances;
@@ -181,24 +231,44 @@
     showApplication("Demo pública");
   }
 
-  function loadFirebaseState() {
-    return state.db.collection("empleados").orderBy("nombre").get().then(function (snapshot) {
-      state.employees = snapshot.docs.map(function (document) {
-        return Object.assign({ id: document.id }, document.data());
+  function loadBackendState() {
+    return Promise.all([
+      fetchJson("/api/employees"),
+      fetchJson("/api/movements"),
+      fetchJson("/api/attendance")
+    ]).then(function (results) {
+      var employees = Array.isArray(results[0]) ? results[0] : [];
+      var movements = Array.isArray(results[1]) ? results[1] : [];
+      var attendance = Array.isArray(results[2]) ? results[2] : [];
+      state.employees = employees.map(function (employee) {
+        return { id: employee.id, nombre: employee.nombre };
       });
-      return Promise.all(state.employees.map(function (employee) {
-        return state.db.collection("bancos_horas").doc(employee.id).get().then(function (bank) {
-          state.balances[employee.id] = bank.exists ? Number(bank.data().saldoHoras || 0) : 0;
-        });
-      }));
-    }).then(function () {
-      return state.db.collection("movimientos_banco_horas").orderBy("fecha", "desc").limit(100).get();
-    }).then(function (snapshot) {
-      state.movements = snapshot.docs.map(function (document) {
-        var movement = Object.assign({ id: document.id }, document.data());
-        movement.fecha = movement.fecha && movement.fecha.toDate ? movement.fecha.toDate().toISOString() : new Date().toISOString();
-        return movement;
+      state.balances = {};
+      employees.forEach(function (employee) {
+        state.balances[employee.id] = Number(employee.saldo_horas || 0);
       });
+      state.movements = movements.map(function (movement) {
+        return {
+          id: movement.id,
+          empleadoId: movement.empleado_id,
+          empleadoNombre: movement.empleado_nombre,
+          tipo: movement.tipo,
+          horas: Number(movement.horas || 0),
+          saldoResultante: Number(movement.saldo_resultante || 0),
+          detalle: movement.detalle || "",
+          fecha: movement.fecha || ""
+        };
+      });
+      state.attendance = attendance.map(function (entry) {
+        return {
+          id: entry.id,
+          empleadoId: entry.empleado_id,
+          empleadoNombre: entry.empleado_nombre,
+          estado: entry.estado,
+          fecha: entry.fecha || ""
+        };
+      });
+      state.filteredEmployeeId = null;
     });
   }
 
@@ -323,18 +393,13 @@
       return;
     }
 
-    state.db.collection("empleados").add({
-      nombre: name,
-      creadoEn: window.firebase.firestore.FieldValue.serverTimestamp()
-    }).then(function (document) {
-      return state.db.collection("bancos_horas").doc(document.id).set({
-        empleadoId: document.id,
-        saldoHoras: 0,
-        actualizadoEn: window.firebase.firestore.FieldValue.serverTimestamp()
-      });
+    fetchJson("/api/employees", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre: name })
     }).then(function () {
       nameInput.value = "";
-      return loadFirebaseState();
+      return loadBackendState();
     }).then(render).then(function () {
       showMessage(byId("hours-message"), "Empleado agregado con saldo inicial de 0,00 horas.");
     }).catch(function (error) {
@@ -385,35 +450,19 @@
       return;
     }
 
-    var bankRef = state.db.collection("bancos_horas").doc(employeeId);
-    var movementRef = state.db.collection("movimientos_banco_horas").doc();
-    state.db.runTransaction(function (transaction) {
-      return transaction.get(bankRef).then(function (bankSnapshot) {
-        var current = bankSnapshot.exists ? Number(bankSnapshot.data().saldoHoras || 0) : 0;
-        var next = kind === "ACUMULACION" ? current + hours : current - hours;
-        if (next < 0) {
-          throw new Error("La devolución supera las horas disponibles.");
-        }
-        next = roundHours(next);
-        transaction.set(bankRef, {
-          empleadoId: employeeId,
-          saldoHoras: next,
-          actualizadoEn: window.firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-        transaction.set(movementRef, {
-          empleadoId: employeeId,
-          empleadoNombre: employee.nombre,
-          tipo: kind,
-          horas: hours,
-          saldoResultante: next,
-          detalle: detail,
-          fecha: window.firebase.firestore.FieldValue.serverTimestamp()
-        });
-      });
+    fetchJson("/api/movements", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        empleado_id: employeeId,
+        tipo: kind,
+        horas: hours,
+        detalle: detail
+      })
     }).then(function () {
       byId("movement-hours").value = "";
       byId("movement-note").value = "";
-      return loadFirebaseState();
+      return loadBackendState();
     }).then(render).then(function () {
       showMessage(byId("hours-message"), kind === "DEVOLUCION" ? "Devolución registrada y descontada del saldo." : "Horas acumuladas correctamente.");
     }).catch(function (error) {
@@ -445,8 +494,15 @@
       return;
     }
 
-    entry.creadoEn = window.firebase.firestore.FieldValue.serverTimestamp();
-    state.db.collection("asistencia").add(entry).then(function () {
+    fetchJson("/api/attendance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        empleado_id: employee.id,
+        estado: entry.estado,
+        fecha: entry.fecha
+      })
+    }).then(function () {
       showMessage(byId("attendance-message"), "Asistencia guardada para " + employee.nombre + ".");
     }).catch(function (error) {
       showMessage(byId("attendance-message"), "No se pudo guardar la asistencia: " + error.message, true);

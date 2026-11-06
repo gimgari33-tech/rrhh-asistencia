@@ -2,10 +2,18 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function authorizationPath() {
+      return /databases/$(database)/documents/usuarios_autorizados/$(request.auth.uid);
+    }
+
     function authorizedUser() {
       return request.auth != null
-        && exists(/databases/$(database)/documents/usuarios_autorizados/$(request.auth.uid))
-        && get(/databases/$(database)/documents/usuarios_autorizados/$(request.auth.uid)).data.activo == true;
+        && exists(authorizationPath())
+        && get(authorizationPath()).data.activo == true;
+    }
+
+    function superAdmin() {
+      return authorizedUser() && get(authorizationPath()).data.rol == 'SUPERADMIN';
     }
 
     match /usuarios_autorizados/{uid} {
@@ -13,22 +21,26 @@ service cloud.firestore {
     }
 
     match /empleados/{empleadoId} {
-      allow read, create, update: if authorizedUser();
+      allow read: if authorizedUser();
+      allow create, update: if superAdmin();
       allow delete: if false;
     }
 
     match /bancos_horas/{empleadoId} {
-      allow read, create, update: if authorizedUser();
+      allow read: if authorizedUser();
+      allow create, update: if superAdmin();
       allow delete: if false;
     }
 
     match /movimientos_banco_horas/{movimientoId} {
-      allow read, create: if authorizedUser();
+      allow read: if authorizedUser();
+      allow create: if superAdmin();
       allow update, delete: if false;
     }
 
     match /asistencia/{registroId} {
-      allow read, create: if authorizedUser();
+      allow read: if authorizedUser();
+      allow create: if superAdmin();
       allow update, delete: if false;
     }
   }
