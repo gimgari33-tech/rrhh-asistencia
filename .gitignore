@@ -1,9 +1,13 @@
 # Credenciales: NUNCA subir a GitHub
 .env
 *.env
+.env.*
+!.env.example
 secrets.toml
 firebase-adminsdk-*.json
 *service-account*.json
+*.pem
+*.key
 
 # Bases de datos con datos reales de empleados
 *.db
@@ -21,3 +25,10 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.log
+.DS_Store
+Thumbs.db

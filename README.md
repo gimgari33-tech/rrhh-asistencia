@@ -1,56 +1,95 @@
-# RRHH Asistencia
+# RR. HH. Asistencia
 
-Aplicación web para registrar asistencia y consultar el banco de horas acumuladas por empleado. La interfaz funciona en celular y escritorio.
+Aplicación web para registrar asistencia y administrar el banco de horas del personal. La interfaz se adapta a celulares y computadoras; el modo conectado usa Flask, Firebase Authentication y Cloud Firestore.
 
-## Funciones disponibles
+## Estado del proyecto
+
+- **Demo pública:** [gimgari33-tech.github.io/rrhh-asistencia](https://gimgari33-tech.github.io/rrhh-asistencia/). Funciona con datos ficticios guardados en el navegador.
+- **Backend:** API Flask preparada para ejecutarse localmente o en Cloud Run.
+- **Base de datos:** Cloud Firestore, proyecto `empleados-cbf0b`, región `southamerica-east1` (São Paulo).
+- **Arquitectura:** backend organizado en dominio, aplicación, infraestructura y presentación. Ver [docs/arquitectura.md](docs/arquitectura.md).
+
+GitHub Pages publica archivos estáticos y por eso ofrece únicamente la demo. Para usar datos en Firestore se necesita ejecutar el backend y completar la configuración de identidad y permisos descrita abajo.
+
+## Funciones del MVP
 
 - Registrar asistencia por empleado, fecha y estado.
 - Crear empleados con banco de horas inicial en cero.
-- Consultar el saldo acumulado de cada empleado y el total disponible.
-- Agregar horas al banco con un detalle opcional.
-- Registrar devoluciones, descontando las horas del saldo.
-- Consultar el historial con el saldo resultante de cada movimiento.
-- Probar la aplicación en modo demo con nombres ficticios y datos guardados solo en el navegador.
+- Consultar saldos e historial de movimientos.
+- Acumular horas y registrar devoluciones con detalle.
+- Rechazar devoluciones que superen el saldo disponible.
+- Probar la demo sin modificar datos reales.
 
-Las horas se guardan con hasta dos decimales. El sistema rechaza devoluciones superiores al saldo disponible. La carga de horas es manual; no se calcula automáticamente a partir de asistencia hasta definir los horarios y reglas de jornada.
+La carga de horas es manual. El cálculo automático por jornada o período queda sujeto a las reglas de negocio pendientes de definición.
 
-## Probar
+## Estructura
 
-Abrí `index.html` o visitá la página publicada en GitHub Pages. Elegí **Probar demo pública**. La demo no usa ni modifica datos reales; los cambios quedan en el almacenamiento local del navegador.
+```text
+backend/rrhh/
+  domain/          reglas y modelos del negocio
+  application/     casos de uso e interfaces (puertos)
+  infrastructure/  Firebase Admin y adaptadores Firestore
+  presentation/    rutas HTTP, autenticación y frontend
+static/
+  css/             estilos
+  js/              interfaz y configuración web de Firebase
+docs/              alcance, requisitos y arquitectura
+app.py             fábrica Flask y punto de entrada WSGI
+```
 
-## Backend y base de datos en la nube
+## Ejecutar el backend localmente
 
-La interfaz usa Firebase Authentication para iniciar sesión y envía el token de identidad a una API Flask. El backend verifica ese token con Firebase Admin SDK y lee y escribe en Cloud Firestore del proyecto `empleados-cbf0b`. La base estándar `(default)` está en `southamerica-east1` (São Paulo). No se aceptan roles enviados por el navegador.
+Se necesita Python 3.12 o posterior, Google Cloud CLI y una identidad con `roles/datastore.user` en el proyecto.
 
-### Acceso por usuario
+1. Crear y activar un entorno virtual:
 
-Habilitá Email/Password en Firebase Authentication y creá las cuentas que correspondan. Después, desde Firebase Console, creá `usuarios_autorizados/{uid}` con estos campos:
+   ```powershell
+   py -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
 
-- `activo`: booleano `true`.
-- `rol`: `SUPERADMIN` para administrar o `INVITADO` para consultar.
-- `nombre`: nombre para mostrar (opcional).
+2. Instalar dependencias e iniciar sesión para Application Default Credentials:
 
-El UID debe coincidir con el ID del documento. Los usuarios invitados solo pueden leer; las escrituras requieren `SUPERADMIN`. Las reglas de `firestore.rules` también aplican esos permisos a accesos directos desde el cliente. Para publicar cambios en las reglas, usá Firebase CLI:
+   ```sh
+   python -m pip install -r requirements.txt
+   gcloud auth application-default login
+   ```
+
+3. Iniciar Flask:
+
+   ```sh
+   python app.py
+   ```
+
+4. Abrir `http://127.0.0.1:5000` y elegir **Probar demo pública** o iniciar sesión con una cuenta habilitada.
+
+La API y la interfaz conectada se sirven desde el mismo origen. No guardes claves de cuentas de servicio dentro del repositorio. Si necesitas usar una clave local, guardala fuera de la carpeta del proyecto y configurá `GOOGLE_APPLICATION_CREDENTIALS` en tu entorno.
+
+## Configurar Firebase Authentication y roles
+
+1. Habilitar el proveedor **Email/Password** en Firebase Authentication y crear las cuentas necesarias.
+2. Para cada cuenta autorizada, crear `usuarios_autorizados/{uid}` en Firestore. El ID del documento debe ser el UID de Firebase Authentication y debe incluir:
+
+   | Campo | Tipo | Valor |
+   |---|---|---|
+   | `activo` | booleano | `true` |
+   | `rol` | texto | `SUPERADMIN` o `INVITADO` |
+   | `nombre` | texto | opcional |
+
+3. Asignar a la identidad de ejecución del backend el rol `roles/datastore.user`.
+4. Después de publicar Cloud Run, agregar el dominio `run.app` del servicio a los dominios autorizados de Firebase Authentication.
+
+El servidor valida el token de Firebase Authentication y consulta el rol autorizado en Firestore. No confía en roles enviados por el navegador. `INVITADO` puede leer; las operaciones de escritura requieren `SUPERADMIN`. Las reglas de [firestore.rules](firestore.rules) protegen también el acceso directo desde clientes Firebase.
+
+Para publicar cambios en las reglas:
 
 ```sh
 firebase deploy --only firestore:rules --project empleados-cbf0b
 ```
 
-### Ejecutar localmente
+## Desplegar en Cloud Run
 
-Se necesita Python 3.12 o posterior y una identidad de Google con permiso `roles/datastore.user` en el proyecto. Para desarrollo local, configurá Application Default Credentials con Google Cloud CLI o indicá la ruta de una clave de servicio guardada fuera del repositorio; nunca subas esa clave a GitHub.
-
-```sh
-python -m pip install -r requirements.txt
-gcloud auth application-default login
-python app.py
-```
-
-Abrí `http://127.0.0.1:5000`. La API y la interfaz se sirven desde Flask en el mismo origen. GitHub Pages sigue funcionando como demo local con datos ficticios; sus rutas estáticas no ejecutan el backend.
-
-### Publicar el backend en Cloud Run
-
-El `Dockerfile` permite servir la interfaz y la API desde el mismo servicio. Configurá la cuenta de servicio de Cloud Run con el rol `roles/datastore.user` y desplegá:
+El repositorio incluye un `Dockerfile` para construir la imagen con Gunicorn. Configurá primero la cuenta de servicio de Cloud Run con `roles/datastore.user` y luego ejecutá:
 
 ```sh
 gcloud run deploy rrhh-asistencia \
@@ -60,18 +99,30 @@ gcloud run deploy rrhh-asistencia \
   --allow-unauthenticated
 ```
 
-Cloud Run acepta las solicitudes al servicio; la API protege los datos verificando Firebase Authentication y `usuarios_autorizados`. Al terminar el despliegue, agregá el dominio `run.app` del servicio a los dominios autorizados de Firebase Authentication.
+Cloud Run recibe solicitudes públicas, pero los endpoints de datos requieren un token Firebase válido y una cuenta habilitada. No cargues datos reales hasta revisar los usuarios autorizados.
 
-No cargues datos reales de empleados hasta crear las cuentas autorizadas y revisar quién tendrá acceso. Nunca agregues claves de cuenta de servicio ni datos personales reales al repositorio.
+## API
 
-### Colecciones de Firestore
+| Método | Ruta | Acceso |
+|---|---|---|
+| `GET` | `/api/health` | público, estado del servicio |
+| `GET` | `/api/auth/me` | usuario habilitado |
+| `GET` | `/api/employees` | usuario habilitado |
+| `POST` | `/api/employees` | `SUPERADMIN` |
+| `GET` | `/api/movements` | usuario habilitado |
+| `POST` | `/api/movements` | `SUPERADMIN` |
+| `GET` | `/api/attendance` | usuario habilitado |
+| `POST` | `/api/attendance` | `SUPERADMIN` |
 
+## Colecciones de Firestore
+
+- `usuarios_autorizados/{uid}`: habilitación y rol de acceso.
 - `empleados/{empleadoId}`: nombre y fecha de creación.
-- `bancos_horas/{empleadoId}`: saldo actual de horas.
-- `movimientos_banco_horas/{movimientoId}`: empleado, tipo, horas, detalle, fecha y saldo resultante.
-- `asistencia/{registroId}`: empleado, fecha, estado y fecha de carga.
+- `bancos_horas/{empleadoId}`: saldo actual.
+- `movimientos_banco_horas/{movimientoId}`: tipo, horas, detalle y saldo resultante.
+- `asistencia/{registroId}`: empleado, estado, fecha y fecha de carga.
 
-Cada acumulación o devolución actualiza el saldo y crea el movimiento en una transacción de Firestore. La demo pública usa empleados ficticios y `localStorage`, sin conexión a Firestore.
+Cada acumulación o devolución actualiza el saldo y crea el movimiento dentro de una transacción de Firestore.
 
 ## Documentación funcional
 
@@ -80,7 +131,9 @@ Cada acumulación o devolución actualiza el saldo y crea el movimiento en una t
 - [Alcance del MVP](docs/03-alcance-mvp.md)
 - [Requisitos funcionales](docs/04-requisitos-funcionales.md)
 - [Reglas de negocio](docs/05-reglas-de-negocio.md)
+- [Arquitectura](docs/arquitectura.md)
+- [Contribuir](CONTRIBUTING.md)
 
-## Privacidad
+## Privacidad y seguridad
 
-El repositorio no debe contener datos personales de empleados, planillas médicas, exportaciones de Firestore ni claves privadas o de cuenta de servicio. La configuración web de Firebase es pública; el backend verifica la identidad y el rol antes de acceder a Firestore.
+No agregues datos personales de empleados, planillas médicas, exportaciones de Firestore, contraseñas ni claves privadas al repositorio. La configuración web de Firebase es pública; los permisos efectivos dependen de la autenticación, la autorización del backend y las reglas de Firestore.

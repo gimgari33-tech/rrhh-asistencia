@@ -8,7 +8,16 @@ __pycache__
 *.sqlite3
 .env
 *.env
+.env.*
 secrets.toml
 firebase-adminsdk-*.json
 *service-account*.json
+*.pem
+*.key
 datos
+.git
+.github
+docs
+.vscode
+.idea
+download
