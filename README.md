@@ -5,8 +5,9 @@ Aplicación web para registrar asistencia y administrar el banco de horas del pe
 ## Estado del proyecto
 
 - **Demo pública:** [gimgari33-tech.github.io/rrhh-asistencia](https://gimgari33-tech.github.io/rrhh-asistencia/). Funciona con datos ficticios guardados en el navegador.
-- **Backend:** API Flask preparada para ejecutarse localmente o en Cloud Run.
+- **Backend:** API Flask preparada para ejecutarse localmente o en Cloud Run; el despliegue todavía está pendiente.
 - **Base de datos:** Cloud Firestore, proyecto `empleados-cbf0b`, región `southamerica-east1` (São Paulo).
+- **Acceso:** Firebase Authentication con Email/Password y autorización por rol en Firestore.
 - **Arquitectura:** backend organizado en dominio, aplicación, infraestructura y presentación. Ver [docs/arquitectura.md](docs/arquitectura.md).
 
 GitHub Pages publica archivos estáticos y por eso ofrece únicamente la demo. Para usar datos en Firestore se necesita ejecutar el backend y completar la configuración de identidad y permisos descrita abajo.
@@ -89,7 +90,18 @@ firebase deploy --only firestore:rules --project empleados-cbf0b
 
 ## Desplegar en Cloud Run
 
-El repositorio incluye un `Dockerfile` para construir la imagen con Gunicorn. Configurá primero la cuenta de servicio de Cloud Run con `roles/datastore.user` y luego ejecutá:
+El repositorio incluye un `Dockerfile` para construir la imagen con Gunicorn. Antes del despliegue, el proyecto necesita:
+
+1. Una cuenta de facturación vinculada. Cloud Run usa facturación por solicitud de forma predeterminada y puede escalar a cero; se cobra el uso que supere las cuotas gratuitas. Revisá los [precios de Cloud Run](https://cloud.google.com/run/pricing) y la [facturación por solicitud](https://cloud.google.com/run/docs/configuring/billing-settings). La cuota gratuita depende de la cuenta de facturación y no garantiza que todo el uso sea gratuito.
+2. Las API de Cloud Run, Cloud Build y Artifact Registry habilitadas.
+3. Para desplegar desde código fuente, la identidad de despliegue necesita `roles/run.sourceDeveloper`, `roles/serviceusage.serviceUsageConsumer` y `roles/iam.serviceAccountUser` sobre la identidad de ejecución. Para habilitar las API también necesita `roles/serviceusage.serviceUsageAdmin`. Ver [despliegue desde código fuente](https://cloud.google.com/run/docs/deploying-source-code).
+4. Una identidad de ejecución de Cloud Run con `roles/datastore.user` en el proyecto para acceder a Firestore. Google recomienda una cuenta de servicio dedicada con permisos mínimos; ver [identidad de servicio de Cloud Run](https://cloud.google.com/run/docs/configuring/services/service-identity).
+
+**Estado actual del proyecto `empleados-cbf0b`:** el despliegue está pendiente. La consola indica que no hay una cuenta de facturación vinculada y que la cuenta de Google usada no tiene permiso para habilitar la API de Cloud Run. El titular o administrador del proyecto debe resolver esos dos requisitos y conceder los roles de despliegue antes de continuar. Vincular facturación puede generar cargos si el uso supera las cuotas gratuitas; revisá los precios y límites antes de activarla.
+
+El despliegue debe usar facturación por solicitud y un mínimo de instancias igual a cero para evitar mantener instancias encendidas sin tráfico. Configurá también un límite razonable de instancias para el uso esperado.
+
+Cuando estén listos esos requisitos, se puede desplegar con:
 
 ```sh
 gcloud run deploy rrhh-asistencia \
