@@ -7,11 +7,8 @@ from uuid import uuid4
 from firebase_admin import firestore as admin_firestore
 from google.cloud import firestore as google_firestore
 
-from ..domain.errors import (
-    ApplicationError,
-    NotFoundError,
-    ServiceUnavailableError,
-)
+from ..application.errors import ApplicationError, ServiceUnavailableError
+from ..domain.errors import DomainError, NotFoundError
 from ..domain.models import AttendanceRecord, Employee, HourMovement
 from ..domain.rules import next_balance
 
@@ -28,7 +25,7 @@ def _serialize_datetime(value):
 def _run_firestore(operation, message):
     try:
         return operation()
-    except ApplicationError:
+    except (ApplicationError, DomainError):
         raise
     except Exception as error:
         logger.exception("Firestore operation failed: %s", message)

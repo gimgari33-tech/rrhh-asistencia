@@ -27,7 +27,7 @@ flowchart LR
     Infrastructure --> Firebase[ Firebase Authentication y Cloud Firestore ]
 ```
 
-Las dependencias del código apuntan hacia el dominio: las reglas no importan Flask, Firebase ni Firestore. `create_app()` conecta los casos de uso con los adaptadores concretos.
+Las dependencias del código apuntan hacia el dominio: las reglas no importan Flask, Firebase ni Firestore. `create_app()` conecta los casos de uso con los adaptadores concretos. Los errores del dominio no contienen códigos HTTP; `presentation/errors.py` los transforma en respuestas de transporte.
 
 ## Flujo de una solicitud protegida
 

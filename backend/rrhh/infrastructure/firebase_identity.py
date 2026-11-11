@@ -3,7 +3,7 @@
 import firebase_admin.auth as firebase_auth
 from firebase_admin.exceptions import FirebaseError
 
-from ..domain.errors import AuthenticationError, ServiceUnavailableError
+from ..application.errors import AuthenticationError, ServiceUnavailableError
 
 
 class FirebaseIdentityProvider:

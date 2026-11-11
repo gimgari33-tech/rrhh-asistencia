@@ -1,12 +1,6 @@
 """Use cases that coordinate domain rules and repository ports."""
 
-from ..domain.errors import (
-    AuthenticationError,
-    AuthorizationError,
-    NotFoundError,
-    ServiceUnavailableError,
-    ValidationError,
-)
+from ..domain.errors import NotFoundError, ValidationError
 from ..domain.models import AttendanceRecord, AuthorizedUser, Employee, HourMovement
 from ..domain.rules import (
     ROLES,
@@ -17,6 +11,7 @@ from ..domain.rules import (
     movement_type,
     positive_hours,
 )
+from .errors import AuthenticationError, AuthorizationError, ServiceUnavailableError
 from .ports import (
     AttendanceRepository,
     AuthorizationRepository,

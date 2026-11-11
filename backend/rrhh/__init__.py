@@ -1,6 +1,6 @@
 """Application factory and dependency wiring for RRHH Asistencia."""
 
-from flask import Flask, jsonify
+from flask import Flask
 
 from .application.services import (
     AccessService,
@@ -9,7 +9,8 @@ from .application.services import (
     HoursService,
 )
 from .config import Config
-from .domain.errors import ApplicationError
+from .application.errors import ApplicationError
+from .domain.errors import DomainError
 from .infrastructure.firebase import FirebaseRuntime
 from .infrastructure.firebase_identity import FirebaseIdentityProvider
 from .infrastructure.firestore_repositories import (
@@ -19,6 +20,7 @@ from .infrastructure.firestore_repositories import (
     FirestoreHoursRepository,
 )
 from .presentation.api import api
+from .presentation.errors import error_response
 from .presentation.web import web
 
 
@@ -43,9 +45,10 @@ def create_app(config=None):
         ),
     }
 
+    @app.errorhandler(DomainError)
     @app.errorhandler(ApplicationError)
     def handle_application_error(error):
-        return jsonify({"error": str(error)}), error.status_code
+        return error_response(error)
 
     app.register_blueprint(api)
     app.register_blueprint(web)
