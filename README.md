@@ -126,6 +126,14 @@ Cloud Run recibe solicitudes públicas, pero los endpoints de datos requieren un
 | `GET` | `/api/attendance` | usuario habilitado |
 | `POST` | `/api/attendance` | `SUPERADMIN` |
 
+## Ejecutar pruebas
+
+Las pruebas de la API usan identidad y repositorios simulados; no requieren credenciales ni escriben en el proyecto real de Firebase.
+
+```sh
+python -m unittest discover -s tests -v
+```
+
 ## Colecciones de Firestore
 
 - `usuarios_autorizados/{uid}`: habilitación y rol de acceso.
