@@ -2,10 +2,11 @@
 
 import unittest
 from decimal import Decimal
+from typing import ClassVar
 from unittest.mock import patch
 
 from backend.rrhh import create_app
-from backend.rrhh.application.errors import AuthenticationError
+from backend.rrhh.application.errors import AuthenticationError, ServiceUnavailableError
 from backend.rrhh.domain.errors import NotFoundError
 from backend.rrhh.domain.models import AttendanceRecord, Employee, HourMovement
 from backend.rrhh.domain.rules import next_balance
@@ -26,13 +27,15 @@ class FakeStore:
 
 
 class FakeIdentityProvider:
-    TOKENS = {
+    TOKENS: ClassVar[dict[str, dict[str, str]]] = {
         "admin-token": {"uid": "admin-uid", "email": "admin@example.test"},
         "guest-token": {"uid": "guest-uid", "email": "guest@example.test"},
         "disabled-token": {"uid": "disabled-uid", "email": "disabled@example.test"},
     }
 
     def verify_id_token(self, token):
+        if token == "service-down":
+            raise ServiceUnavailableError("Firebase no disponible.")
         if token not in self.TOKENS:
             raise AuthenticationError("Token de prueba inválido.")
         return self.TOKENS[token]
@@ -168,10 +171,14 @@ class ApiTests(unittest.TestCase):
         disabled_user = self.client.get(
             "/api/employees", headers=self.headers("disabled-token")
         )
+        unavailable = self.client.get(
+            "/api/auth/me", headers=self.headers("service-down")
+        )
 
         self.assertEqual(missing_token.status_code, 401)
         self.assertEqual(invalid_token.status_code, 401)
         self.assertEqual(disabled_user.status_code, 403)
+        self.assertEqual(unavailable.status_code, 503)
 
     def test_guest_cannot_escalate_role_with_a_request_header(self):
         profile = self.client.get(
@@ -179,6 +186,12 @@ class ApiTests(unittest.TestCase):
         )
         readable_employees = self.client.get(
             "/api/employees", headers=self.headers("guest-token")
+        )
+        readable_movements = self.client.get(
+            "/api/movements", headers=self.headers("guest-token")
+        )
+        readable_attendance = self.client.get(
+            "/api/attendance", headers=self.headers("guest-token")
         )
         response = self.client.post(
             "/api/employees",
@@ -192,6 +205,8 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(profile.status_code, 200)
         self.assertEqual(profile.get_json()["rol"], "INVITADO")
         self.assertEqual(readable_employees.status_code, 200)
+        self.assertEqual(readable_movements.status_code, 200)
+        self.assertEqual(readable_attendance.status_code, 200)
         self.assertEqual(response.status_code, 403)
         self.assertEqual(self.store.employees, {})
 
@@ -268,6 +283,38 @@ class ApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("supera", response.get_json()["error"])
+
+    def test_api_rejects_malformed_movement_and_attendance_payloads(self):
+        headers = self.headers("admin-token")
+
+        movement = self.client.post("/api/movements", headers=headers)
+        attendance = self.client.post("/api/attendance", headers=headers)
+
+        self.assertEqual(movement.status_code, 400)
+        self.assertEqual(attendance.status_code, 400)
+
+    def test_api_returns_not_found_for_movement_of_unknown_employee(self):
+        response = self.client.post(
+            "/api/movements",
+            json={
+                "empleado_id": "missing-employee",
+                "tipo": "ACUMULACION",
+                "horas": 1,
+                "detalle": "Prueba",
+            },
+            headers=self.headers("admin-token"),
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_web_serves_index_and_allowlisted_assets_only(self):
+        index = self.client.get("/")
+        stylesheet = self.client.get("/static/css/styles.css")
+        private_file = self.client.get("/requirements.txt")
+
+        self.assertEqual(index.status_code, 200)
+        self.assertEqual(stylesheet.status_code, 200)
+        self.assertEqual(private_file.status_code, 404)
 
 
 if __name__ == "__main__":
