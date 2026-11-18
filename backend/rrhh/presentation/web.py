@@ -2,7 +2,6 @@
 
 from flask import Blueprint, abort, current_app, send_from_directory
 
-
 web = Blueprint("web", __name__)
 PUBLIC_ASSETS = frozenset({
     "static/css/styles.css",

@@ -12,7 +12,6 @@ from ..domain.errors import DomainError, NotFoundError
 from ..domain.models import AttendanceRecord, Employee, HourMovement
 from ..domain.rules import next_balance
 
-
 logger = logging.getLogger(__name__)
 
 

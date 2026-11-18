@@ -5,7 +5,6 @@ from decimal import Decimal, InvalidOperation
 
 from .errors import ValidationError
 
-
 CENT = Decimal("0.01")
 MAX_HOURS = Decimal("99999999.99")
 ROLES = frozenset({"SUPERADMIN", "INVITADO"})
