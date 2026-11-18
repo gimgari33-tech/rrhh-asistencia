@@ -149,7 +149,7 @@ Cada acumulación o devolución actualiza el saldo y crea el movimiento dentro d
 - [Canvas](docs/01-canvas.md)
 - [Stakeholders](docs/02-stakeholders.md)
 - [Alcance del MVP](docs/03-alcance-mvp.md)
-- [Requisitos funcionales](docs/04-requisitos-funcionales.md)
+- [SRS: requisitos, criterios de aceptación y casos de uso](docs/04-requisitos-funcionales.md)
 - [Reglas de negocio](docs/05-reglas-de-negocio.md)
 - [Arquitectura](docs/arquitectura.md)
 - [Contribuir](CONTRIBUTING.md)
