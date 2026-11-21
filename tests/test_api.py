@@ -2,12 +2,19 @@
 
 import unittest
 from decimal import Decimal
+from typing import ClassVar
 from unittest.mock import patch
 
 from backend.rrhh import create_app
 from backend.rrhh.application.errors import AuthenticationError
 from backend.rrhh.domain.errors import NotFoundError
-from backend.rrhh.domain.models import AttendanceRecord, Employee, HourMovement
+from backend.rrhh.domain.models import (
+    AttendanceRecord,
+    Course,
+    CourseAssignment,
+    Employee,
+    HourMovement,
+)
 from backend.rrhh.domain.rules import next_balance
 
 
@@ -23,10 +30,13 @@ class FakeStore:
         self.movements = []
         self.attendance = []
         self.next_employee_id = 1
+        self.courses = {}
+        self.course_assignments = {}
+        self.next_course_id = 1
 
 
 class FakeIdentityProvider:
-    TOKENS = {
+    TOKENS: ClassVar[dict[str, dict[str, str]]] = {
         "admin-token": {"uid": "admin-uid", "email": "admin@example.test"},
         "guest-token": {"uid": "guest-uid", "email": "guest@example.test"},
         "disabled-token": {"uid": "disabled-uid", "email": "disabled@example.test"},
@@ -119,6 +129,58 @@ class FakeAttendanceRepository:
         return record
 
 
+class FakeCourseRepository:
+    def __init__(self, store):
+        self.store = store
+
+    def list_courses(self):
+        return list(self.store.courses.values())
+
+    def get_course_by_id(self, course_id):
+        return self.store.courses.get(course_id)
+
+    def create_course(self, name, description):
+        course_id = f"course-{self.store.next_course_id}"
+        self.store.next_course_id += 1
+        course = Course(id=course_id, nombre=name, descripcion=description)
+        self.store.courses[course_id] = course
+        return course
+
+    def assign(self, employee, course):
+        key = (employee.id, course.id)
+        if key not in self.store.course_assignments:
+            self.store.course_assignments[key] = CourseAssignment(
+                id=course.id,
+                empleado_id=employee.id,
+                empleado_nombre=employee.nombre,
+                curso_id=course.id,
+                curso_nombre=course.nombre,
+            )
+        return self.store.course_assignments[key]
+
+    def complete(self, employee_id, course_id, completed_on):
+        assignment = self.store.course_assignments.get((employee_id, course_id))
+        if assignment is None:
+            raise NotFoundError("El curso no está asignado a este empleado.")
+        completed = assignment.marcar_completado(completed_on)
+        self.store.course_assignments[(employee_id, course_id)] = completed
+        return completed
+
+    def list_for_employee(self, employee_id):
+        return [
+            assignment
+            for (assigned_employee_id, _), assignment in self.store.course_assignments.items()
+            if assigned_employee_id == employee_id
+        ]
+
+    def list_pending(self):
+        return [
+            assignment
+            for assignment in self.store.course_assignments.values()
+            if not assignment.completado
+        ]
+
+
 class ApiTests(unittest.TestCase):
     def setUp(self):
         self.store = FakeStore()
@@ -141,6 +203,10 @@ class ApiTests(unittest.TestCase):
             patch(
                 "backend.rrhh.FirestoreAttendanceRepository",
                 return_value=FakeAttendanceRepository(self.store),
+            ),
+            patch(
+                "backend.rrhh.FirestoreCourseRepository",
+                return_value=FakeCourseRepository(self.store),
             ),
         )
         for active_patch in patches:
@@ -268,6 +334,87 @@ class ApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("supera", response.get_json()["error"])
+
+    def test_admin_can_assign_complete_and_list_pending_courses(self):
+        headers = self.headers("admin-token")
+        employee = self.client.post(
+            "/api/employees", json={"nombre": "Ana Pérez"}, headers=headers
+        ).get_json()
+        course_response = self.client.post(
+            "/api/courses",
+            json={
+                "nombre": "Seguridad e higiene",
+                "descripcion": "Capacitación anual",
+            },
+            headers=headers,
+        )
+        course = course_response.get_json()
+        listed_courses = self.client.get("/api/courses", headers=headers).get_json()
+        assignment_response = self.client.post(
+            f"/api/employees/{employee['id']}/courses",
+            json={"curso_id": course["id"]},
+            headers=headers,
+        )
+        pending_before = self.client.get(
+            "/api/courses/pending", headers=headers
+        ).get_json()
+        employee_courses_before = self.client.get(
+            f"/api/employees/{employee['id']}/courses", headers=headers
+        ).get_json()
+
+        complete_response = self.client.post(
+            f"/api/employees/{employee['id']}/courses/{course['id']}/complete",
+            json={"fecha_completacion": "2026-11-20"},
+            headers=headers,
+        )
+        pending_after = self.client.get(
+            "/api/courses/pending", headers=headers
+        ).get_json()
+        employee_courses_after = self.client.get(
+            f"/api/employees/{employee['id']}/courses", headers=headers
+        ).get_json()
+
+        self.assertEqual(course_response.status_code, 201)
+        self.assertEqual(listed_courses[0]["id"], course["id"])
+        self.assertEqual(assignment_response.status_code, 201)
+        self.assertEqual(assignment_response.get_json()["completado"], False)
+        self.assertEqual(len(pending_before), 1)
+        self.assertEqual(employee_courses_before["porcentaje_completado"], 0.0)
+        self.assertEqual(complete_response.status_code, 200)
+        self.assertEqual(complete_response.get_json()["fecha_completacion"], "2026-11-20")
+        self.assertEqual(pending_after, [])
+        self.assertEqual(employee_courses_after["porcentaje_completado"], 100.0)
+
+    def test_course_mutations_require_superadmin_and_completion_requires_assignment(self):
+        guest_headers = self.headers("guest-token")
+        employee = self.client.post(
+            "/api/employees",
+            json={"nombre": "Ana Pérez"},
+            headers=self.headers("admin-token"),
+        ).get_json()
+        course = self.client.post(
+            "/api/courses",
+            json={"nombre": "Seguridad e higiene"},
+            headers=self.headers("admin-token"),
+        ).get_json()
+
+        create_for_guest = self.client.post(
+            "/api/courses", json={"nombre": "No autorizado"}, headers=guest_headers
+        )
+        assign_for_guest = self.client.post(
+            f"/api/employees/{employee['id']}/courses",
+            json={"curso_id": course["id"]},
+            headers=guest_headers,
+        )
+        complete_unassigned = self.client.post(
+            f"/api/employees/{employee['id']}/courses/{course['id']}/complete",
+            json={"fecha_completacion": "2026-11-20"},
+            headers=self.headers("admin-token"),
+        )
+
+        self.assertEqual(create_for_guest.status_code, 403)
+        self.assertEqual(assign_for_guest.status_code, 403)
+        self.assertEqual(complete_unassigned.status_code, 404)
 
 
 if __name__ == "__main__":
