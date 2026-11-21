@@ -15,8 +15,16 @@ from backend.rrhh.domain.rules import next_balance
 class FakeStore:
     def __init__(self):
         self.authorized_users = {
-            "admin-uid": {"activo": True, "rol": "SUPERADMIN", "nombre": "Admin de prueba"},
-            "guest-uid": {"activo": True, "rol": "INVITADO", "nombre": "Invitado de prueba"},
+            "admin-uid": {
+                "activo": True,
+                "rol": "SUPERADMIN",
+                "nombre": "Admin de prueba",
+            },
+            "guest-uid": {
+                "activo": True,
+                "rol": "INVITADO",
+                "nombre": "Invitado de prueba",
+            },
             "disabled-uid": {"activo": False, "rol": "SUPERADMIN"},
         }
         self.employees = {}
@@ -128,7 +136,10 @@ class ApiTests(unittest.TestCase):
         employee_repository = FakeEmployeeRepository(self.store)
         patches = (
             patch("backend.rrhh.FirebaseRuntime", return_value=object()),
-            patch("backend.rrhh.FirebaseIdentityProvider", return_value=FakeIdentityProvider()),
+            patch(
+                "backend.rrhh.FirebaseIdentityProvider",
+                return_value=FakeIdentityProvider(),
+            ),
             patch(
                 "backend.rrhh.FirestoreAuthorizationRepository",
                 return_value=FakeAuthorizationRepository(self.store),
@@ -181,9 +192,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(unavailable.status_code, 503)
 
     def test_guest_cannot_escalate_role_with_a_request_header(self):
-        profile = self.client.get(
-            "/api/auth/me", headers=self.headers("guest-token")
-        )
+        profile = self.client.get("/api/auth/me", headers=self.headers("guest-token"))
         readable_employees = self.client.get(
             "/api/employees", headers=self.headers("guest-token")
         )

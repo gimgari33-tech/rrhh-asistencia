@@ -42,7 +42,16 @@ class DomainRuleTests(unittest.TestCase):
 
     def test_positive_hours_accepts_cents_and_rejects_invalid_values(self):
         self.assertEqual(positive_hours("2.50"), Decimal("2.50"))
-        for value in (None, "not a number", "NaN", "Infinity", 0, -1, "1.001", "100000000"):
+        for value in (
+            None,
+            "not a number",
+            "NaN",
+            "Infinity",
+            0,
+            -1,
+            "1.001",
+            "100000000",
+        ):
             with self.subTest(value=value), self.assertRaises(ValidationError):
                 positive_hours(value)
 
@@ -105,7 +114,9 @@ class ApplicationServiceTests(unittest.TestCase):
 
         self.assertEqual(
             user,
-            AuthorizedUser("user-1", "rrhh@example.test", "Nombre de Firestore", "SUPERADMIN"),
+            AuthorizedUser(
+                "user-1", "rrhh@example.test", "Nombre de Firestore", "SUPERADMIN"
+            ),
         )
         authorization.get_by_uid.assert_called_once_with("user-1")
 
@@ -124,13 +135,19 @@ class ApplicationServiceTests(unittest.TestCase):
         authorization = Mock()
         service = AccessService(identity, authorization)
 
-        for document in (None, {"activo": False, "rol": "SUPERADMIN"}, {"activo": True, "rol": "AUDITOR"}):
+        for document in (
+            None,
+            {"activo": False, "rol": "SUPERADMIN"},
+            {"activo": True, "rol": "AUDITOR"},
+        ):
             with self.subTest(document=document):
                 authorization.get_by_uid.return_value = document
                 with self.assertRaises(AuthorizationError):
                     service.authenticate("token")
 
-    def test_access_service_preserves_auth_errors_and_maps_unknown_identity_errors(self):
+    def test_access_service_preserves_auth_errors_and_maps_unknown_identity_errors(
+        self,
+    ):
         identity = Mock()
         authorization = Mock()
         service = AccessService(identity, authorization)

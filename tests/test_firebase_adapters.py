@@ -67,7 +67,9 @@ class FirebaseRuntimeTests(unittest.TestCase):
         ):
             self.assertIs(runtime.app(), initialized_app)
 
-        initialize_app.assert_called_once_with(options={"projectId": "employees-project"})
+        initialize_app.assert_called_once_with(
+            options={"projectId": "employees-project"}
+        )
 
     def test_rechecks_for_app_after_waiting_for_initialization_lock(self):
         initialized_by_another_thread = object()
@@ -130,10 +132,13 @@ class FirebaseIdentityTests(unittest.TestCase):
         runtime = Mock()
         provider = FirebaseIdentityProvider(runtime)
 
-        with patch(
-            "backend.rrhh.infrastructure.firebase_identity.firebase_auth.verify_id_token",
-            side_effect=ValueError("bad token"),
-        ), self.assertRaises(AuthenticationError):
+        with (
+            patch(
+                "backend.rrhh.infrastructure.firebase_identity.firebase_auth.verify_id_token",
+                side_effect=ValueError("bad token"),
+            ),
+            self.assertRaises(AuthenticationError),
+        ):
             provider.verify_id_token("invalid-token")
 
     def test_maps_runtime_setup_errors_to_service_unavailable(self):
@@ -150,7 +155,9 @@ class FirestoreRepositoryTests(unittest.TestCase):
         value = datetime(2026, 11, 17, 12, 30, tzinfo=UTC)
 
         self.assertEqual(_serialize_datetime(value), value.isoformat())
-        self.assertEqual(_serialize_datetime("already serialized"), "already serialized")
+        self.assertEqual(
+            _serialize_datetime("already serialized"), "already serialized"
+        )
         self.assertEqual(_serialize_datetime(None), "")
         self.assertEqual(_serialize_datetime(123), "")
 
@@ -158,7 +165,9 @@ class FirestoreRepositoryTests(unittest.TestCase):
         self.assertEqual(_run_firestore(lambda: "ok", "unavailable"), "ok")
         for error in (ApplicationError("expected"), DomainError("invalid")):
             with self.subTest(error=error), self.assertRaises(type(error)):
-                _run_firestore(lambda error=error: (_ for _ in ()).throw(error), "unavailable")
+                _run_firestore(
+                    lambda error=error: (_ for _ in ()).throw(error), "unavailable"
+                )
 
         with self.assertRaises(ServiceUnavailableError):
             _run_firestore(lambda: 1 / 0, "Firestore unavailable")
@@ -207,7 +216,10 @@ class FirestoreRepositoryTests(unittest.TestCase):
         bank_one.get.return_value = make_snapshot(data={"saldoHoras": 3.5})
         bank_two = Mock()
         bank_two.get.return_value = make_snapshot(exists=False)
-        bank_collection.document.side_effect = {"employee-1": bank_one, "employee-2": bank_two}.get
+        bank_collection.document.side_effect = {
+            "employee-1": bank_one,
+            "employee-2": bank_two,
+        }.get
 
         employees = FirestoreEmployeeRepository(runtime).list_with_balances()
 
@@ -217,7 +229,9 @@ class FirestoreRepositoryTests(unittest.TestCase):
         self.assertEqual(employees[1].nombre, "")
         self.assertEqual(employees[1].saldo_horas, Decimal(0))
 
-    def test_employee_repository_gets_existing_employee_and_returns_none_if_missing(self):
+    def test_employee_repository_gets_existing_employee_and_returns_none_if_missing(
+        self,
+    ):
         database = Mock()
         runtime = make_runtime(database)
         employee_collection = Mock()
@@ -296,9 +310,7 @@ class FirestoreRepositoryTests(unittest.TestCase):
         database = Mock()
         runtime = make_runtime(database)
         employee_ref = Mock()
-        employee_ref.get.return_value = make_snapshot(
-            data={"nombre": "Ana Pérez"}
-        )
+        employee_ref.get.return_value = make_snapshot(data={"nombre": "Ana Pérez"})
         bank_ref = Mock()
         bank_ref.get.return_value = make_snapshot(data={"saldoHoras": 1.5})
         movement_ref = Mock(id="movement-1")
