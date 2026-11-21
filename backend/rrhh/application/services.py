@@ -1,14 +1,20 @@
 """Use cases that coordinate domain rules and repository ports."""
 
 from ..domain.errors import NotFoundError, ValidationError
-from ..domain.models import AttendanceRecord, AuthorizedUser, Employee, HourMovement
+from ..domain.models import (
+    AttendanceRecord,
+    AuthorizedUser,
+    Employee,
+    Horas,
+    HourMovement,
+    TipoMovimiento,
+)
 from ..domain.rules import (
     ROLES,
     attendance_date,
     attendance_status,
     employee_name,
     movement_detail,
-    movement_type,
     positive_hours,
 )
 from .errors import AuthenticationError, AuthorizationError, ServiceUnavailableError
@@ -85,12 +91,16 @@ class HoursService:
         normalized_employee_id = str(employee_id or "").strip()
         if not normalized_employee_id:
             raise ValidationError("Debe indicar un empleado.")
-        return self._repository.create_movement(
-            normalized_employee_id,
-            movement_type(kind),
-            positive_hours(hours),
-            movement_detail(detail),
-        )
+        movement_kind = TipoMovimiento.parse(kind)
+        movement_hours = Horas.positiva(positive_hours(hours))
+        movement_detail_value = movement_detail(detail)
+
+        def apply_movement(account):
+            if movement_kind is TipoMovimiento.ACUMULACION:
+                return account.acreditar_horas(movement_hours, movement_detail_value)
+            return account.debitar_horas(movement_hours, movement_detail_value)
+
+        return self._repository.transact_account(normalized_employee_id, apply_movement)
 
 
 class AttendanceService:
