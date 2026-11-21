@@ -2,6 +2,7 @@
 
 import logging
 from decimal import Decimal
+from hashlib import sha256
 from uuid import uuid4
 
 from firebase_admin import firestore as admin_firestore
@@ -239,23 +240,96 @@ class FirestoreAttendanceRepository:
 
         return _run_firestore(operation, "No se pudieron cargar las asistencias.")
 
+    def list_for_day(self, attendance_day):
+        def operation():
+            query = (
+                self._firebase_runtime.database()
+                .collection("asistencia")
+                .where("fecha", "==", attendance_day)
+            )
+            records = []
+            for snapshot in query.stream():
+                data = snapshot.to_dict() or {}
+                records.append(
+                    AttendanceRecord(
+                        id=snapshot.id,
+                        empleado_id=data.get("empleadoId", ""),
+                        empleado_nombre=data.get("empleadoNombre", ""),
+                        estado=data.get("estado", ""),
+                        fecha=data.get("fecha", ""),
+                        creado_en=_serialize_datetime(data.get("creadoEn")),
+                    )
+                )
+            return records
+
+        return _run_firestore(operation, "No se pudieron cargar las asistencias de la jornada.")
+
     def create(self, employee_id, employee_name, status, attendance_day):
+        record = AttendanceRecord(
+            id="",
+            empleado_id=employee_id,
+            empleado_nombre=employee_name,
+            estado=status,
+            fecha=attendance_day,
+        )
+        return self.save_day([record])[0]
+
+    def save_day(self, records):
+        if not records:
+            return []
+
         def operation():
             database = self._firebase_runtime.database()
-            record_ref = database.collection("asistencia").document()
-            record_ref.set({
-                "empleadoId": employee_id,
-                "empleadoNombre": employee_name,
-                "estado": status,
-                "fecha": attendance_day,
-                "creadoEn": admin_firestore.SERVER_TIMESTAMP,
-            })
-            return AttendanceRecord(
-                id=record_ref.id,
-                empleado_id=employee_id,
-                empleado_nombre=employee_name,
-                estado=status,
-                fecha=attendance_day,
-            )
+            collection = database.collection("asistencia")
+            batch = database.batch()
+            matching_by_employee = {}
+            existing_for_day = collection.where("fecha", "==", records[0].fecha).stream()
+            for snapshot in existing_for_day:
+                data = snapshot.to_dict() or {}
+                matching_by_employee.setdefault(data.get("empleadoId", ""), []).append(
+                    (snapshot.reference, data)
+                )
 
-        return _run_firestore(operation, "No se pudo guardar la asistencia.")
+            saved_records = []
+            for record in records:
+                matching_records = matching_by_employee.get(record.empleado_id, [])
+                if matching_records:
+                    references = [matching_records[0][0]]
+                    for duplicate_reference, _ in matching_records[1:]:
+                        batch.delete(duplicate_reference)
+                    created_at = matching_records[0][1].get(
+                        "creadoEn", admin_firestore.SERVER_TIMESTAMP
+                    )
+                else:
+                    stable_id = sha256(
+                        f"{record.empleado_id}:{record.fecha}".encode()
+                    ).hexdigest()
+                    references = [collection.document(stable_id)]
+                    created_at = admin_firestore.SERVER_TIMESTAMP
+
+                for reference in references:
+                    batch.set(
+                        reference,
+                        {
+                            "empleadoId": record.empleado_id,
+                            "empleadoNombre": record.empleado_nombre,
+                            "estado": record.estado,
+                            "fecha": record.fecha,
+                            "creadoEn": created_at,
+                            "actualizadoEn": admin_firestore.SERVER_TIMESTAMP,
+                        },
+                    )
+                saved_records.append(
+                    AttendanceRecord(
+                        id=references[0].id,
+                        empleado_id=record.empleado_id,
+                        empleado_nombre=record.empleado_nombre,
+                        estado=record.estado,
+                        fecha=record.fecha,
+                        creado_en=_serialize_datetime(created_at),
+                    )
+                )
+            batch.commit()
+            return saved_records
+
+        return _run_firestore(operation, "No se pudo guardar la jornada de asistencia.")

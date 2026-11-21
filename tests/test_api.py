@@ -116,16 +116,58 @@ class FakeAttendanceRepository:
     def list_recent(self, limit=100):
         return list(reversed(self.store.attendance[-limit:]))
 
+    def list_for_day(self, attendance_day):
+        return [
+            record
+            for record in self.store.attendance
+            if record.fecha == attendance_day
+        ]
+
     def create(self, employee_id, employee_name, status, day):
-        record = AttendanceRecord(
-            id=f"attendance-{len(self.store.attendance) + 1}",
-            empleado_id=employee_id,
-            empleado_nombre=employee_name,
-            estado=status,
-            fecha=day,
-        )
-        self.store.attendance.append(record)
-        return record
+        return self.save_day([
+            AttendanceRecord(
+                id="",
+                empleado_id=employee_id,
+                empleado_nombre=employee_name,
+                estado=status,
+                fecha=day,
+            )
+        ])[0]
+
+    def save_day(self, records):
+        saved = []
+        for record in records:
+            existing_index = next(
+                (
+                    index
+                    for index, existing in enumerate(self.store.attendance)
+                    if existing.empleado_id == record.empleado_id
+                    and existing.fecha == record.fecha
+                ),
+                None,
+            )
+            if existing_index is None:
+                saved_record = AttendanceRecord(
+                    id=f"attendance-{len(self.store.attendance) + 1}",
+                    empleado_id=record.empleado_id,
+                    empleado_nombre=record.empleado_nombre,
+                    estado=record.estado,
+                    fecha=record.fecha,
+                )
+                self.store.attendance.append(saved_record)
+            else:
+                existing = self.store.attendance[existing_index]
+                saved_record = AttendanceRecord(
+                    id=existing.id,
+                    empleado_id=record.empleado_id,
+                    empleado_nombre=record.empleado_nombre,
+                    estado=record.estado,
+                    fecha=record.fecha,
+                    creado_en=existing.creado_en,
+                )
+                self.store.attendance[existing_index] = saved_record
+            saved.append(saved_record)
+        return saved
 
 
 class ApiTests(unittest.TestCase):
@@ -277,6 +319,88 @@ class ApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("supera", response.get_json()["error"])
+
+    def test_admin_can_save_and_query_a_daily_attendance_sheet(self):
+        headers = self.headers("admin-token")
+        first = self.client.post(
+            "/api/employees", json={"nombre": "Ana Pérez"}, headers=headers
+        ).get_json()
+        second = self.client.post(
+            "/api/employees", json={"nombre": "Luis Gómez"}, headers=headers
+        ).get_json()
+
+        response = self.client.post(
+            "/api/attendance/batch",
+            json={
+                "fecha": "2026-11-20",
+                "asistencias": [
+                    {"empleado_id": first["id"], "estado": "Presente"},
+                    {"empleado_id": second["id"], "estado": "Falta con aviso"},
+                ],
+            },
+            headers=headers,
+        )
+        day_response = self.client.get(
+            "/api/attendance?fecha=2026-11-20", headers=headers
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.get_json()), 2)
+        self.assertEqual(day_response.status_code, 200)
+        self.assertEqual(
+            {entry["estado"] for entry in day_response.get_json()},
+            {"Presente", "Falta con aviso"},
+        )
+
+    def test_daily_sheet_overwrites_existing_employee_day_without_duplicates(self):
+        headers = self.headers("admin-token")
+        employee = self.client.post(
+            "/api/employees", json={"nombre": "Ana Pérez"}, headers=headers
+        ).get_json()
+        payload = {
+            "fecha": "2026-11-20",
+            "asistencias": [
+                {"empleado_id": employee["id"], "estado": "Presente"}
+            ],
+        }
+        self.client.post("/api/attendance/batch", json=payload, headers=headers)
+        payload["asistencias"][0]["estado"] = "Vacaciones"
+
+        response = self.client.post(
+            "/api/attendance/batch", json=payload, headers=headers
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(self.store.attendance), 1)
+        self.assertEqual(self.store.attendance[0].estado, "Vacaciones")
+
+    def test_daily_sheet_rejects_duplicate_employees_and_guest_writes(self):
+        admin_headers = self.headers("admin-token")
+        employee = self.client.post(
+            "/api/employees", json={"nombre": "Ana Pérez"}, headers=admin_headers
+        ).get_json()
+        duplicate_payload = {
+            "fecha": "2026-11-20",
+            "asistencias": [
+                {"empleado_id": employee["id"], "estado": "Presente"},
+                {"empleado_id": employee["id"], "estado": "Franco"},
+            ],
+        }
+
+        duplicate = self.client.post(
+            "/api/attendance/batch",
+            json=duplicate_payload,
+            headers=admin_headers,
+        )
+        guest = self.client.post(
+            "/api/attendance/batch",
+            json=duplicate_payload,
+            headers=self.headers("guest-token"),
+        )
+
+        self.assertEqual(duplicate.status_code, 400)
+        self.assertEqual(guest.status_code, 403)
+        self.assertEqual(self.store.attendance, [])
 
 
 if __name__ == "__main__":

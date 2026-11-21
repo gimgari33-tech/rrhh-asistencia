@@ -137,6 +137,15 @@ input:focus, select:focus { outline: 3px solid rgba(37, 99, 235, .15); border-co
 .summary-card strong { color: var(--navy); font-size: 23px; }
 .section-grid { display: grid; grid-template-columns: minmax(240px, .8fr) minmax(320px, 1.2fr); gap: 16px; margin-bottom: 20px; }
 .form-card { padding: 20px; }
+.attendance-form { gap: 16px; }
+.attendance-controls { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; }
+.attendance-date-control { display: grid; gap: 7px; width: min(260px, 100%); }
+.attendance-table-card { margin: 0; }
+.attendance-table { min-width: 500px; }
+.attendance-table th[scope="row"] { color: #334155; background: #fff; font-size: 13px; font-weight: 700; letter-spacing: normal; text-transform: none; }
+.attendance-table td { width: 48%; }
+.attendance-status { max-width: 340px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .compact-card { align-content: start; }
 .compact-card .button { margin-top: 5px; }
 .button-row { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 6px; }
@@ -166,6 +175,8 @@ td { color: #334155; }
   .nav-button { width: auto; flex: 1; margin: 0; text-align: center; }
   .content-area { padding: 22px 14px 36px; }
   .section-grid { grid-template-columns: 1fr; }
+  .attendance-controls { align-items: stretch; flex-direction: column; }
+  .attendance-date-control { width: 100%; }
 }
 @media (max-width: 480px) {
   .access-card { margin: 20px auto; padding: 25px 20px; }
