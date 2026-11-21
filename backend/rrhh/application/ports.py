@@ -1,9 +1,15 @@
 """Interfaces for external services used by the application layer."""
 
-from decimal import Decimal
-from typing import Mapping, Protocol
+from collections.abc import Callable, Mapping
+from typing import Protocol
 
-from ..domain.models import AttendanceRecord, Employee, HourMovement
+from ..domain.models import (
+    AttendanceRecord,
+    CuentaBancoHoras,
+    Employee,
+    HourMovement,
+    MovimientoHora,
+)
 
 
 class IdentityProvider(Protocol):
@@ -25,12 +31,10 @@ class EmployeeRepository(Protocol):
 class HoursRepository(Protocol):
     def list_recent(self, limit: int = 100) -> list[HourMovement]: ...
 
-    def create_movement(
+    def transact_account(
         self,
         employee_id: str,
-        kind: str,
-        hours: Decimal,
-        detail: str,
+        operation: Callable[[CuentaBancoHoras], MovimientoHora],
     ) -> HourMovement: ...
 
 

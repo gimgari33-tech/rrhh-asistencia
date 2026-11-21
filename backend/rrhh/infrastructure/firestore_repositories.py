@@ -9,9 +9,15 @@ from google.cloud import firestore as google_firestore
 
 from ..application.errors import ApplicationError, ServiceUnavailableError
 from ..domain.errors import DomainError, NotFoundError
-from ..domain.models import AttendanceRecord, Employee, HourMovement
-from ..domain.rules import next_balance
-
+from ..domain.models import (
+    AttendanceRecord,
+    CuentaBancoHoras,
+    Employee,
+    Horas,
+    HourMovement,
+    TipoMovimiento,
+)
+from ..domain.rules import movement_detail, positive_hours
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +147,18 @@ class FirestoreHoursRepository:
         return _run_firestore(operation, "No se pudieron cargar los movimientos.")
 
     def create_movement(self, employee_id, kind, hours, detail):
+        movement_kind = TipoMovimiento.parse(kind)
+        movement_hours = Horas.positiva(positive_hours(hours))
+        movement_motive = movement_detail(detail)
+
+        def apply_movement(account):
+            if movement_kind is TipoMovimiento.ACUMULACION:
+                return account.acreditar_horas(movement_hours, movement_motive)
+            return account.debitar_horas(movement_hours, movement_motive)
+
+        return self.transact_account(employee_id, apply_movement)
+
+    def transact_account(self, employee_id, domain_operation):
         def operation():
             database = self._firebase_runtime.database()
             employee_ref = database.collection("empleados").document(employee_id)
@@ -157,34 +175,38 @@ class FirestoreHoursRepository:
                 bank_snapshot = bank_ref.get(transaction=active_transaction)
                 bank_data = bank_snapshot.to_dict() if bank_snapshot.exists else {}
                 current_balance = (bank_data or {}).get("saldoHoras", 0) or 0
-                resulting_balance = next_balance(current_balance, hours, kind)
+                account = CuentaBancoHoras(
+                    empleado_id=employee_id,
+                    saldo_actual=Horas.from_value(current_balance),
+                )
+                movement = domain_operation(account)
                 employee_data = employee_snapshot.to_dict() or {}
 
                 active_transaction.set(bank_ref, {
                     "empleadoId": employee_id,
-                    "saldoHoras": float(resulting_balance),
+                    "saldoHoras": float(account.saldo_actual.valor),
                     "actualizadoEn": admin_firestore.SERVER_TIMESTAMP,
                 }, merge=True)
                 active_transaction.set(movement_ref, {
                     "empleadoId": employee_id,
                     "empleadoNombre": employee_data.get("nombre", ""),
-                    "tipo": kind,
-                    "horas": float(hours),
-                    "saldoResultante": float(resulting_balance),
-                    "detalle": detail,
+                    "tipo": movement.tipo.value,
+                    "horas": float(movement.horas.valor),
+                    "saldoResultante": float(movement.saldo_resultante.valor),
+                    "detalle": movement.detalle,
                     "fecha": admin_firestore.SERVER_TIMESTAMP,
                 })
-                return employee_data.get("nombre", ""), resulting_balance
+                return employee_data.get("nombre", ""), movement
 
-            employee_name, resulting_balance = commit_movement(transaction)
+            employee_name, movement = commit_movement(transaction)
             return HourMovement(
                 id=movement_ref.id,
                 empleado_id=employee_id,
                 empleado_nombre=employee_name,
-                tipo=kind,
-                horas=hours,
-                saldo_resultante=resulting_balance,
-                detalle=detail,
+                tipo=movement.tipo.value,
+                horas=movement.horas.valor,
+                saldo_resultante=movement.saldo_resultante.valor,
+                detalle=movement.detalle,
             )
 
         return _run_firestore(operation, "No se pudo registrar el movimiento.")

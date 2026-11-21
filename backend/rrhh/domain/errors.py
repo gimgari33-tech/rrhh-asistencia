@@ -9,5 +9,9 @@ class ValidationError(DomainError):
     """A supplied value violates a business rule."""
 
 
+class SaldoInsuficienteError(ValidationError):
+    """A debit would take a time bank below zero."""
+
+
 class NotFoundError(DomainError):
     """A requested domain object does not exist."""

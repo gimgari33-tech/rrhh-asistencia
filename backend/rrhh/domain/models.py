@@ -1,7 +1,126 @@
 """Small domain objects shared by use cases and adapters."""
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from enum import Enum
+
+from .errors import SaldoInsuficienteError, ValidationError
+from .rules import movement_detail
+
+CENT = Decimal("0.01")
+MAX_HOURS = Decimal("99999999.99")
+
+
+class TipoMovimiento(str, Enum):
+    """Supported operations on an employee time bank."""
+
+    ACUMULACION = "ACUMULACION"
+    DEVOLUCION = "DEVOLUCION"
+
+    @classmethod
+    def parse(cls, value):
+        if isinstance(value, cls):
+            return value
+        try:
+            return cls(str(value or "").upper())
+        except ValueError:
+            raise ValidationError("El tipo debe ser ACUMULACION o DEVOLUCION.") from None
+
+
+@dataclass(frozen=True)
+class Horas:
+    """Non-negative hours with at most two decimal places."""
+
+    valor: Decimal
+
+    def __post_init__(self):
+        try:
+            value = Decimal(str(self.valor))
+        except (InvalidOperation, TypeError, ValueError):
+            raise ValidationError("La cantidad de horas es inválida.") from None
+
+        if not value.is_finite() or value < 0 or value > MAX_HOURS:
+            raise ValidationError("Las horas deben ser finitas y no negativas.")
+        try:
+            has_valid_precision = value == value.quantize(CENT)
+        except InvalidOperation:
+            has_valid_precision = False
+        if not has_valid_precision:
+            raise ValidationError("Las horas admiten hasta dos decimales.")
+        object.__setattr__(self, "valor", value)
+
+    @classmethod
+    def from_value(cls, value):
+        return value if isinstance(value, cls) else cls(value)
+
+    @classmethod
+    def positiva(cls, value):
+        hours = cls.from_value(value)
+        if hours.valor <= 0:
+            raise ValidationError("Las horas del movimiento deben ser positivas.")
+        return hours
+
+
+@dataclass(frozen=True)
+class MovimientoHora:
+    """Domain result produced by a time-bank operation."""
+
+    tipo: TipoMovimiento
+    horas: Horas
+    saldo_resultante: Horas
+    detalle: str
+
+
+class CuentaBancoHoras:
+    """Aggregate root that protects a time bank's non-negative balance."""
+
+    def __init__(self, empleado_id, saldo_actual=Decimal("0.00")):
+        normalized_id = str(empleado_id or "").strip()
+        if not normalized_id:
+            raise ValidationError("La cuenta debe identificar a un empleado.")
+        self._empleado_id = normalized_id
+        self._saldo_actual = Horas.from_value(saldo_actual)
+        self._movimientos = []
+
+    @property
+    def empleado_id(self):
+        return self._empleado_id
+
+    @property
+    def saldo_actual(self):
+        return self._saldo_actual
+
+    @property
+    def movimientos(self):
+        return tuple(self._movimientos)
+
+    def acreditar_horas(self, horas, motivo=""):
+        amount = Horas.positiva(horas)
+        detail = movement_detail(motivo)
+        balance = Horas(self._saldo_actual.valor + amount.valor)
+        return self._registrar(TipoMovimiento.ACUMULACION, amount, balance, detail)
+
+    def debitar_horas(self, horas, motivo=""):
+        amount = Horas.positiva(horas)
+        detail = movement_detail(motivo)
+        if amount.valor > self._saldo_actual.valor:
+            raise SaldoInsuficienteError(
+                "La devolución supera las horas disponibles. "
+                f"Saldo: {self._saldo_actual.valor} h; devolución: {amount.valor} h."
+            )
+        balance = Horas(self._saldo_actual.valor - amount.valor)
+        return self._registrar(TipoMovimiento.DEVOLUCION, amount, balance, detail)
+
+    def _registrar(self, kind, amount, balance, detail):
+        movement = MovimientoHora(
+            tipo=kind,
+            horas=amount,
+            saldo_resultante=balance,
+            detalle=detail,
+        )
+        self._saldo_actual = balance
+        self._movimientos.append(movement)
+        return movement
 
 
 @dataclass(frozen=True)
