@@ -2,6 +2,14 @@
   "use strict";
 
   var STORAGE_KEY = "rrhh-asistencia-demo-v1";
+  var ATTENDANCE_STATUSES = [
+    "Presente",
+    "Franco",
+    "Falta sin aviso",
+    "Falta con aviso",
+    "Médico",
+    "Vacaciones"
+  ];
   var state = {
     mode: "demo",
     db: null,
@@ -61,6 +69,9 @@
       byId(formId).classList.toggle("hidden", !canManage);
     });
     render();
+    if (state.mode !== "demo") {
+      loadAttendanceForSelectedDay();
+    }
   }
 
   function deepCopy(value) {
@@ -92,7 +103,10 @@
   }
 
   function initialize() {
-    byId("attendance-date").value = new Date().toISOString().slice(0, 10);
+    var now = new Date();
+    byId("attendance-date").value = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 10);
     bindEvents();
 
     if (window.firebase && window.firebase.apps && window.firebase.apps.length > 0) {
@@ -110,6 +124,12 @@
     byId("employee-form").addEventListener("submit", createEmployee);
     byId("movement-form").addEventListener("submit", registerMovement);
     byId("attendance-form").addEventListener("submit", registerAttendance);
+    byId("attendance-date").addEventListener("change", loadAttendanceForSelectedDay);
+    byId("mark-all-present").addEventListener("click", function () {
+      document.querySelectorAll(".attendance-status").forEach(function (select) {
+        select.value = "Presente";
+      });
+    });
     byId("show-all-movements").addEventListener("click", function () {
       state.filteredEmployeeId = null;
       renderMovements();
@@ -280,7 +300,7 @@
   }
 
   function renderEmployeeSelectors() {
-    ["attendance-employee", "movement-employee"].forEach(function (selectId) {
+    ["movement-employee"].forEach(function (selectId) {
       var select = byId(selectId);
       var previous = select.value;
       select.replaceChildren();
@@ -296,6 +316,73 @@
       });
       if (state.employees.some(function (employee) { return employee.id === previous; })) {
         select.value = previous;
+      }
+    });
+    renderAttendanceRows();
+  }
+
+  function renderAttendanceRows() {
+    var body = byId("attendance-body");
+    var day = byId("attendance-date").value;
+    body.replaceChildren();
+    byId("empty-attendance").classList.toggle("hidden", state.employees.length > 0);
+    byId("save-attendance-button").disabled = state.employees.length === 0;
+    byId("mark-all-present").disabled = state.employees.length === 0;
+
+    state.employees.forEach(function (employee, index) {
+      var existing = state.attendance.find(function (entry) {
+        return entry.empleadoId === employee.id && entry.fecha === day;
+      });
+      var row = document.createElement("tr");
+      var name = document.createElement("th");
+      name.scope = "row";
+      name.textContent = employee.nombre;
+
+      var statusCell = document.createElement("td");
+      var select = document.createElement("select");
+      var selectId = "attendance-status-" + index;
+      select.id = selectId;
+      select.className = "attendance-status";
+      select.dataset.employeeId = employee.id;
+      select.setAttribute("aria-label", "Estado de asistencia de " + employee.nombre);
+      ATTENDANCE_STATUSES.forEach(function (status) {
+        var option = document.createElement("option");
+        option.value = status;
+        option.textContent = status;
+        select.appendChild(option);
+      });
+      select.value = existing ? existing.estado : "Presente";
+      statusCell.appendChild(select);
+      row.append(name, statusCell);
+      body.appendChild(row);
+    });
+  }
+
+  function loadAttendanceForSelectedDay() {
+    var day = byId("attendance-date").value;
+    if (state.mode === "demo" || !day) {
+      renderAttendanceRows();
+      return;
+    }
+
+    fetchJson("/api/attendance?fecha=" + encodeURIComponent(day)).then(function (records) {
+      state.attendance = state.attendance.filter(function (entry) {
+        return entry.fecha !== day;
+      }).concat(records.map(function (entry) {
+        return {
+          id: entry.id,
+          empleadoId: entry.empleado_id,
+          empleadoNombre: entry.empleado_nombre,
+          estado: entry.estado,
+          fecha: entry.fecha || ""
+        };
+      }));
+      if (byId("attendance-date").value === day) {
+        renderAttendanceRows();
+      }
+    }).catch(function (error) {
+      if (byId("attendance-date").value === day) {
+        showMessage(byId("attendance-message"), "No se pudo consultar la jornada: " + error.message, true);
       }
     });
   }
@@ -472,41 +559,111 @@
 
   function registerAttendance(event) {
     event.preventDefault();
-    var employeeId = byId("attendance-employee").value;
-    var employee = state.employees.find(function (item) { return item.id === employeeId; });
-    if (!employee) {
-      showMessage(byId("attendance-message"), "Seleccioná un empleado.", true);
+    if (!state.employees.length) {
+      showMessage(byId("attendance-message"), "Primero agregá empleados para cargar la jornada.", true);
       return;
     }
 
-    var entry = {
-      empleadoId: employee.id,
-      empleadoNombre: employee.nombre,
-      estado: byId("attendance-status").value,
-      fecha: byId("attendance-date").value
-    };
+    var day = byId("attendance-date").value;
+    if (!day) {
+      showMessage(byId("attendance-message"), "Elegí la fecha de la jornada.", true);
+      return;
+    }
+    var entries = state.employees.map(function (employee, index) {
+      return {
+        empleado_id: employee.id,
+        empleadoNombre: employee.nombre,
+        estado: byId("attendance-status-" + index).value
+      };
+    });
+
+    function saveDemoAttendance() {
+      state.attendance = state.attendance.filter(function (entry) {
+        return entry.fecha !== day || !entries.some(function (item) {
+          return item.empleado_id === entry.empleadoId;
+        });
+      });
+      entries.forEach(function (entry) {
+        state.attendance.unshift({
+          id: "demo-a-" + day + "-" + entry.empleado_id,
+          empleadoId: entry.empleado_id,
+          empleadoNombre: entry.empleadoNombre,
+          estado: entry.estado,
+          fecha: day
+        });
+      });
+      saveDemoState();
+      renderAttendanceRows();
+      showMessage(byId("attendance-message"), attendanceSummary(entries));
+    }
 
     if (state.mode === "demo") {
-      entry.id = "demo-a-" + Date.now();
-      state.attendance.unshift(entry);
-      saveDemoState();
-      showMessage(byId("attendance-message"), "Asistencia guardada en esta demo para " + employee.nombre + ".");
+      var existingDemo = state.attendance.filter(function (entry) { return entry.fecha === day; });
+      if (existingDemo.length && !window.confirm("Ya hay asistencias para esta fecha. ¿Querés reemplazar la jornada completa?")) {
+        showMessage(byId("attendance-message"), "No se realizaron cambios.");
+        return;
+      }
+      saveDemoAttendance();
       return;
     }
 
-    fetchJson("/api/attendance", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        empleado_id: employee.id,
-        estado: entry.estado,
-        fecha: entry.fecha
-      })
-    }).then(function () {
-      showMessage(byId("attendance-message"), "Asistencia guardada para " + employee.nombre + ".");
+    setAttendanceSaving(true);
+    fetchJson("/api/attendance?fecha=" + encodeURIComponent(day)).then(function (existing) {
+      if (existing.length && !window.confirm("Ya hay asistencias para esta fecha. ¿Querés reemplazar la jornada completa?")) {
+        showMessage(byId("attendance-message"), "No se realizaron cambios.");
+        return null;
+      }
+      return fetchJson("/api/attendance/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fecha: day,
+          asistencias: entries.map(function (entry) {
+            return { empleado_id: entry.empleado_id, estado: entry.estado };
+          })
+        })
+      }).then(function () {
+        return loadBackendState();
+      }).then(function () {
+        render();
+        showMessage(byId("attendance-message"), attendanceSummary(entries));
+      });
     }).catch(function (error) {
-      showMessage(byId("attendance-message"), "No se pudo guardar la asistencia: " + error.message, true);
+      showMessage(byId("attendance-message"), "No se pudo guardar la jornada: " + error.message, true);
+    }).finally(function () {
+      setAttendanceSaving(false);
     });
+  }
+
+  function attendanceSummary(entries) {
+    var counts = {};
+    entries.forEach(function (entry) {
+      counts[entry.estado] = (counts[entry.estado] || 0) + 1;
+    });
+    var descriptions = {
+      "Presente": ["presente", "presentes"],
+      "Franco": ["franco", "francos"],
+      "Falta sin aviso": ["falta sin aviso", "faltas sin aviso"],
+      "Falta con aviso": ["falta con aviso", "faltas con aviso"],
+      "Médico": ["con licencia médica", "con licencia médica"],
+      "Vacaciones": ["de vacaciones", "de vacaciones"]
+    };
+    var summary = ATTENDANCE_STATUSES.filter(function (status) {
+      return counts[status];
+    }).map(function (status) {
+      return counts[status] + " " + descriptions[status][counts[status] === 1 ? 0 : 1];
+    });
+    return "Jornada guardada: " + summary.join(", ") + ".";
+  }
+
+  function setAttendanceSaving(isSaving) {
+    var form = byId("attendance-form");
+    form.setAttribute("aria-busy", String(isSaving));
+    form.querySelectorAll("button, input, select").forEach(function (control) {
+      control.disabled = isSaving || (control.id === "save-attendance-button" && state.employees.length === 0)
+        || (control.id === "mark-all-present" && state.employees.length === 0);
+    });
+    byId("save-attendance-button").textContent = isSaving ? "Guardando asistencias..." : "Guardar jornada completa";
   }
 
   function formatHours(value) {

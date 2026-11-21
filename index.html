@@ -58,26 +58,39 @@
               <div>
                 <p class="eyebrow">REGISTRO DIARIO</p>
                 <h2>Asistencia</h2>
-                <p>Seleccioná a la persona, la fecha y el estado.</p>
+                <p>Elegí una fecha y registrá la jornada completa. Cada persona comienza como Presente.</p>
               </div>
             </div>
-            <form id="attendance-form" class="form-card">
-              <label for="attendance-employee">Empleado</label>
-              <select id="attendance-employee" required></select>
-              <label for="attendance-date">Fecha</label>
-              <input id="attendance-date" type="date" required>
-              <label for="attendance-status">Estado</label>
-              <select id="attendance-status" required>
-                <option value="Presente">Presente</option>
-                <option value="Franco">Franco</option>
-                <option value="Falta sin aviso">Falta sin aviso</option>
-                <option value="Falta con aviso">Falta con aviso</option>
-                <option value="Médico">Médico</option>
-                <option value="Vacaciones">Vacaciones</option>
-              </select>
-              <button class="button button-primary" type="submit">Guardar asistencia</button>
+            <form id="attendance-form" class="form-card attendance-form">
+              <div class="attendance-controls">
+                <div class="attendance-date-control">
+                  <label for="attendance-date">Fecha de la jornada</label>
+                  <input id="attendance-date" type="date" required>
+                </div>
+                <button id="mark-all-present" class="button button-secondary" type="button">
+                  Marcar todos Presente
+                </button>
+              </div>
+              <div class="table-card attendance-table-card">
+                <div class="table-scroll">
+                  <table class="attendance-table">
+                    <caption class="sr-only">Estado de asistencia por empleado para la fecha elegida</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Empleado</th>
+                        <th scope="col">Estado de asistencia</th>
+                      </tr>
+                    </thead>
+                    <tbody id="attendance-body"></tbody>
+                  </table>
+                </div>
+                <p id="empty-attendance" class="empty-state hidden">Primero agregá empleados para cargar la jornada.</p>
+              </div>
+              <button id="save-attendance-button" class="button button-primary" type="submit">
+                Guardar jornada completa
+              </button>
             </form>
-            <p id="attendance-message" class="message" role="status"></p>
+            <p id="attendance-message" class="message" role="status" aria-live="polite"></p>
           </section>
 
           <section id="hours-panel" class="panel hidden">
