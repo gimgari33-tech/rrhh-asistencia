@@ -5,19 +5,20 @@ from decimal import Decimal, InvalidOperation
 
 from .errors import ValidationError
 
-
 CENT = Decimal("0.01")
 MAX_HOURS = Decimal("99999999.99")
 ROLES = frozenset({"SUPERADMIN", "INVITADO"})
 MOVEMENT_TYPES = frozenset({"ACUMULACION", "DEVOLUCION"})
-ATTENDANCE_STATUSES = frozenset({
-    "Presente",
-    "Franco",
-    "Falta sin aviso",
-    "Falta con aviso",
-    "Médico",
-    "Vacaciones",
-})
+ATTENDANCE_STATUSES = frozenset(
+    {
+        "Presente",
+        "Franco",
+        "Falta sin aviso",
+        "Falta con aviso",
+        "Médico",
+        "Vacaciones",
+    }
+)
 
 
 def employee_name(value):
@@ -35,7 +36,12 @@ def positive_hours(value):
     except (InvalidOperation, TypeError, ValueError):
         raise ValidationError("La cantidad de horas es inválida.") from None
 
-    if not hours.is_finite() or hours <= 0 or hours > MAX_HOURS or hours != hours.quantize(CENT):
+    if (
+        not hours.is_finite()
+        or hours <= 0
+        or hours > MAX_HOURS
+        or hours != hours.quantize(CENT)
+    ):
         raise ValidationError("Ingresá horas positivas, con hasta dos decimales.")
     return hours
 

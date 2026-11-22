@@ -25,7 +25,9 @@ def require_authorized_user(required_role=None):
                 return error_response(error)
 
             if required_role and user.rol != required_role:
-                error = AuthorizationError("No tenés permisos para realizar esta acción.")
+                error = AuthorizationError(
+                    "No tenés permisos para realizar esta acción."
+                )
                 return error_response(error)
 
             g.current_user = user
