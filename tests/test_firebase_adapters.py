@@ -398,6 +398,9 @@ class FirestoreRepositoryTests(unittest.TestCase):
         runtime = make_runtime(database)
         record_ref = Mock(id="attendance-1")
         database.collection.return_value.document.return_value = record_ref
+        database.collection.return_value.where.return_value.stream.return_value = []
+        batch = Mock()
+        database.batch.return_value = batch
 
         record = FirestoreAttendanceRepository(runtime).create(
             "employee-1", "Ana Pérez", "Presente", "2026-11-17"
@@ -405,7 +408,8 @@ class FirestoreRepositoryTests(unittest.TestCase):
 
         self.assertEqual(record.id, "attendance-1")
         self.assertEqual(record.empleado_nombre, "Ana Pérez")
-        record_ref.set.assert_called_once()
+        batch.set.assert_called_once()
+        batch.commit.assert_called_once()
 
 
 if __name__ == "__main__":

@@ -41,6 +41,10 @@ class HoursRepository(Protocol):
 class AttendanceRepository(Protocol):
     def list_recent(self, limit: int = 100) -> list[AttendanceRecord]: ...
 
+    def list_for_day(self, attendance_day: str) -> list[AttendanceRecord]: ...
+
+    def save_day(self, records: list[AttendanceRecord]) -> list[AttendanceRecord]: ...
+
     def create(
         self,
         employee_id: str,

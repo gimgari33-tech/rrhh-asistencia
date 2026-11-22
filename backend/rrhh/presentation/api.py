@@ -64,7 +64,12 @@ def create_movement():
 @api.get("/attendance")
 @require_authorized_user()
 def get_attendance():
-    records = _services()["attendance"].list_recent()
+    day = request.args.get("fecha")
+    records = (
+        _services()["attendance"].list_for_day(day)
+        if day is not None
+        else _services()["attendance"].list_recent()
+    )
     return jsonify([record.to_dict() for record in records]), 200
 
 
@@ -81,3 +86,17 @@ def create_attendance():
         payload.get("fecha"),
     )
     return jsonify(record.to_dict()), 201
+
+
+@api.post("/attendance/batch")
+@require_authorized_user("SUPERADMIN")
+def create_attendance_batch():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "La jornada enviada no es válida."}), 400
+
+    records = _services()["attendance"].create_many(
+        payload.get("fecha"),
+        payload.get("asistencias"),
+    )
+    return jsonify([record.to_dict() for record in records]), 200

@@ -108,6 +108,8 @@ class HoursService:
 
 
 class AttendanceService:
+    MAX_BATCH_SIZE = 200
+
     def __init__(
         self,
         employee_repository: EmployeeRepository,
@@ -118,6 +120,9 @@ class AttendanceService:
 
     def list_recent(self) -> list[AttendanceRecord]:
         return self._attendance_repository.list_recent()
+
+    def list_for_day(self, day: object) -> list[AttendanceRecord]:
+        return self._attendance_repository.list_for_day(attendance_date(day))
 
     def create(
         self,
@@ -139,3 +144,38 @@ class AttendanceService:
             normalized_status,
             normalized_day,
         )
+
+    def create_many(self, day: object, entries: object) -> list[AttendanceRecord]:
+        normalized_day = attendance_date(day)
+        if not isinstance(entries, list) or not entries:
+            raise ValidationError("Debe incluir al menos una asistencia.")
+        if len(entries) > self.MAX_BATCH_SIZE:
+            raise ValidationError(
+                f"No se pueden guardar más de {self.MAX_BATCH_SIZE} asistencias por jornada."
+            )
+
+        records = []
+        seen_employee_ids = set()
+        for entry in entries:
+            if not isinstance(entry, dict):
+                raise ValidationError("Cada asistencia debe ser un objeto válido.")
+            employee_id = str(entry.get("empleado_id") or "").strip()
+            if not employee_id:
+                raise ValidationError("Cada asistencia debe indicar un empleado.")
+            if employee_id in seen_employee_ids:
+                raise ValidationError("No repitas un empleado en la misma jornada.")
+            seen_employee_ids.add(employee_id)
+
+            employee = self._employee_repository.get_by_id(employee_id)
+            if employee is None:
+                raise NotFoundError("Empleado no encontrado.")
+            records.append(
+                AttendanceRecord(
+                    id="",
+                    empleado_id=employee.id,
+                    empleado_nombre=employee.nombre,
+                    estado=attendance_status(entry.get("estado")),
+                    fecha=normalized_day,
+                )
+            )
+        return self._attendance_repository.save_day(records)
