@@ -2,6 +2,7 @@
 
 from flask import Flask
 
+from .application.errors import ApplicationError
 from .application.services import (
     AccessService,
     AttendanceService,
@@ -9,7 +10,6 @@ from .application.services import (
     HoursService,
 )
 from .config import Config
-from .application.errors import ApplicationError
 from .domain.errors import DomainError
 from .infrastructure.firebase import FirebaseRuntime
 from .infrastructure.firebase_identity import FirebaseIdentityProvider

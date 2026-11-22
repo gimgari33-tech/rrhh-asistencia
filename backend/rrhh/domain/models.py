@@ -131,7 +131,12 @@ class AuthorizedUser:
     rol: str
 
     def to_dict(self):
-        return {"uid": self.uid, "email": self.email, "nombre": self.nombre, "rol": self.rol}
+        return {
+            "uid": self.uid,
+            "email": self.email,
+            "nombre": self.nombre,
+            "rol": self.rol,
+        }
 
 
 @dataclass(frozen=True)
