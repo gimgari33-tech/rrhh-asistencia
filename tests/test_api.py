@@ -128,21 +128,21 @@ class FakeAttendanceRepository:
 
     def list_for_day(self, attendance_day):
         return [
-            record
-            for record in self.store.attendance
-            if record.fecha == attendance_day
+            record for record in self.store.attendance if record.fecha == attendance_day
         ]
 
     def create(self, employee_id, employee_name, status, day):
-        return self.save_day([
-            AttendanceRecord(
-                id="",
-                empleado_id=employee_id,
-                empleado_nombre=employee_name,
-                estado=status,
-                fecha=day,
-            )
-        ])[0]
+        return self.save_day(
+            [
+                AttendanceRecord(
+                    id="",
+                    empleado_id=employee_id,
+                    empleado_nombre=employee_name,
+                    estado=status,
+                    fecha=day,
+                )
+            ]
+        )[0]
 
     def save_day(self, records):
         saved = []
@@ -382,9 +382,7 @@ class ApiTests(unittest.TestCase):
         ).get_json()
         payload = {
             "fecha": "2026-11-20",
-            "asistencias": [
-                {"empleado_id": employee["id"], "estado": "Presente"}
-            ],
+            "asistencias": [{"empleado_id": employee["id"], "estado": "Presente"}],
         }
         self.client.post("/api/attendance/batch", json=payload, headers=headers)
         payload["asistencias"][0]["estado"] = "Vacaciones"

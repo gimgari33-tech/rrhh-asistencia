@@ -293,7 +293,9 @@ class FirestoreAttendanceRepository:
                 )
             return records
 
-        return _run_firestore(operation, "No se pudieron cargar las asistencias de la jornada.")
+        return _run_firestore(
+            operation, "No se pudieron cargar las asistencias de la jornada."
+        )
 
     def create(self, employee_id, employee_name, status, attendance_day):
         record = AttendanceRecord(
