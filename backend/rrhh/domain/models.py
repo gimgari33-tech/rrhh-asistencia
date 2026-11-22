@@ -96,11 +96,18 @@ class CuentaBancoHoras:
     def movimientos(self):
         return tuple(self._movimientos)
 
-    def acreditar_horas(self, horas, motivo=""):
+    def acreditar_horas(self, horas, motivo="", politica=None):
         amount = Horas.positiva(horas)
+        if politica is None:
+            from .policies import CompensacionSimple
+
+            politica = CompensacionSimple()
+        credited_hours = Horas.positiva(politica.calcular_credito(amount.valor))
         detail = movement_detail(motivo)
-        balance = Horas(self._saldo_actual.valor + amount.valor)
-        return self._registrar(TipoMovimiento.ACUMULACION, amount, balance, detail)
+        balance = Horas(self._saldo_actual.valor + credited_hours.valor)
+        return self._registrar(
+            TipoMovimiento.ACUMULACION, credited_hours, balance, detail
+        )
 
     def debitar_horas(self, horas, motivo=""):
         amount = Horas.positiva(horas)
