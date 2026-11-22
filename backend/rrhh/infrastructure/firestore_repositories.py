@@ -52,7 +52,9 @@ class FirestoreAuthorizationRepository:
             )
             return snapshot.to_dict() if snapshot.exists else None
 
-        return _run_firestore(operation, "No se pudo verificar el acceso en este momento.")
+        return _run_firestore(
+            operation, "No se pudo verificar el acceso en este momento."
+        )
 
 
 class FirestoreEmployeeRepository:
@@ -63,16 +65,24 @@ class FirestoreEmployeeRepository:
         def operation():
             database = self._firebase_runtime.database()
             employees = []
-            for snapshot in database.collection("empleados").order_by("nombre").stream():
+            for snapshot in (
+                database.collection("empleados").order_by("nombre").stream()
+            ):
                 employee_data = snapshot.to_dict() or {}
-                bank_snapshot = database.collection("bancos_horas").document(snapshot.id).get()
+                bank_snapshot = (
+                    database.collection("bancos_horas").document(snapshot.id).get()
+                )
                 bank_data = bank_snapshot.to_dict() if bank_snapshot.exists else {}
-                employees.append(Employee(
-                    id=snapshot.id,
-                    nombre=employee_data.get("nombre", ""),
-                    creado_en=_serialize_datetime(employee_data.get("creadoEn")),
-                    saldo_horas=Decimal(str((bank_data or {}).get("saldoHoras", 0) or 0)),
-                ))
+                employees.append(
+                    Employee(
+                        id=snapshot.id,
+                        nombre=employee_data.get("nombre", ""),
+                        creado_en=_serialize_datetime(employee_data.get("creadoEn")),
+                        saldo_horas=Decimal(
+                            str((bank_data or {}).get("saldoHoras", 0) or 0)
+                        ),
+                    )
+                )
             return employees
 
         return _run_firestore(operation, "No se pudieron cargar los empleados.")
@@ -102,15 +112,21 @@ class FirestoreEmployeeRepository:
             employee_ref = database.collection("empleados").document()
             bank_ref = database.collection("bancos_horas").document(employee_ref.id)
             batch = database.batch()
-            batch.set(employee_ref, {
-                "nombre": name,
-                "creadoEn": admin_firestore.SERVER_TIMESTAMP,
-            })
-            batch.set(bank_ref, {
-                "empleadoId": employee_ref.id,
-                "saldoHoras": 0,
-                "actualizadoEn": admin_firestore.SERVER_TIMESTAMP,
-            })
+            batch.set(
+                employee_ref,
+                {
+                    "nombre": name,
+                    "creadoEn": admin_firestore.SERVER_TIMESTAMP,
+                },
+            )
+            batch.set(
+                bank_ref,
+                {
+                    "empleadoId": employee_ref.id,
+                    "saldoHoras": 0,
+                    "actualizadoEn": admin_firestore.SERVER_TIMESTAMP,
+                },
+            )
             batch.commit()
             return Employee(id=employee_ref.id, nombre=name)
 
@@ -132,16 +148,20 @@ class FirestoreHoursRepository:
             movements = []
             for snapshot in query.stream():
                 data = snapshot.to_dict() or {}
-                movements.append(HourMovement(
-                    id=snapshot.id,
-                    empleado_id=data.get("empleadoId", ""),
-                    empleado_nombre=data.get("empleadoNombre", ""),
-                    tipo=data.get("tipo", ""),
-                    horas=Decimal(str(data.get("horas", 0) or 0)),
-                    saldo_resultante=Decimal(str(data.get("saldoResultante", 0) or 0)),
-                    detalle=data.get("detalle", "") or "",
-                    fecha=_serialize_datetime(data.get("fecha")),
-                ))
+                movements.append(
+                    HourMovement(
+                        id=snapshot.id,
+                        empleado_id=data.get("empleadoId", ""),
+                        empleado_nombre=data.get("empleadoNombre", ""),
+                        tipo=data.get("tipo", ""),
+                        horas=Decimal(str(data.get("horas", 0) or 0)),
+                        saldo_resultante=Decimal(
+                            str(data.get("saldoResultante", 0) or 0)
+                        ),
+                        detalle=data.get("detalle", "") or "",
+                        fecha=_serialize_datetime(data.get("fecha")),
+                    )
+                )
             return movements
 
         return _run_firestore(operation, "No se pudieron cargar los movimientos.")
@@ -163,7 +183,9 @@ class FirestoreHoursRepository:
             database = self._firebase_runtime.database()
             employee_ref = database.collection("empleados").document(employee_id)
             bank_ref = database.collection("bancos_horas").document(employee_id)
-            movement_ref = database.collection("movimientos_banco_horas").document(str(uuid4()))
+            movement_ref = database.collection("movimientos_banco_horas").document(
+                str(uuid4())
+            )
             transaction = database.transaction()
 
             @google_firestore.transactional
@@ -182,20 +204,27 @@ class FirestoreHoursRepository:
                 movement = domain_operation(account)
                 employee_data = employee_snapshot.to_dict() or {}
 
-                active_transaction.set(bank_ref, {
-                    "empleadoId": employee_id,
-                    "saldoHoras": float(account.saldo_actual.valor),
-                    "actualizadoEn": admin_firestore.SERVER_TIMESTAMP,
-                }, merge=True)
-                active_transaction.set(movement_ref, {
-                    "empleadoId": employee_id,
-                    "empleadoNombre": employee_data.get("nombre", ""),
-                    "tipo": movement.tipo.value,
-                    "horas": float(movement.horas.valor),
-                    "saldoResultante": float(movement.saldo_resultante.valor),
-                    "detalle": movement.detalle,
-                    "fecha": admin_firestore.SERVER_TIMESTAMP,
-                })
+                active_transaction.set(
+                    bank_ref,
+                    {
+                        "empleadoId": employee_id,
+                        "saldoHoras": float(account.saldo_actual.valor),
+                        "actualizadoEn": admin_firestore.SERVER_TIMESTAMP,
+                    },
+                    merge=True,
+                )
+                active_transaction.set(
+                    movement_ref,
+                    {
+                        "empleadoId": employee_id,
+                        "empleadoNombre": employee_data.get("nombre", ""),
+                        "tipo": movement.tipo.value,
+                        "horas": float(movement.horas.valor),
+                        "saldoResultante": float(movement.saldo_resultante.valor),
+                        "detalle": movement.detalle,
+                        "fecha": admin_firestore.SERVER_TIMESTAMP,
+                    },
+                )
                 return employee_data.get("nombre", ""), movement
 
             employee_name, movement = commit_movement(transaction)
@@ -227,14 +256,16 @@ class FirestoreAttendanceRepository:
             records = []
             for snapshot in query.stream():
                 data = snapshot.to_dict() or {}
-                records.append(AttendanceRecord(
-                    id=snapshot.id,
-                    empleado_id=data.get("empleadoId", ""),
-                    empleado_nombre=data.get("empleadoNombre", ""),
-                    estado=data.get("estado", ""),
-                    fecha=data.get("fecha", ""),
-                    creado_en=_serialize_datetime(data.get("creadoEn")),
-                ))
+                records.append(
+                    AttendanceRecord(
+                        id=snapshot.id,
+                        empleado_id=data.get("empleadoId", ""),
+                        empleado_nombre=data.get("empleadoNombre", ""),
+                        estado=data.get("estado", ""),
+                        fecha=data.get("fecha", ""),
+                        creado_en=_serialize_datetime(data.get("creadoEn")),
+                    )
+                )
             return records
 
         return _run_firestore(operation, "No se pudieron cargar las asistencias.")
@@ -243,13 +274,15 @@ class FirestoreAttendanceRepository:
         def operation():
             database = self._firebase_runtime.database()
             record_ref = database.collection("asistencia").document()
-            record_ref.set({
-                "empleadoId": employee_id,
-                "empleadoNombre": employee_name,
-                "estado": status,
-                "fecha": attendance_day,
-                "creadoEn": admin_firestore.SERVER_TIMESTAMP,
-            })
+            record_ref.set(
+                {
+                    "empleadoId": employee_id,
+                    "empleadoNombre": employee_name,
+                    "estado": status,
+                    "fecha": attendance_day,
+                    "creadoEn": admin_firestore.SERVER_TIMESTAMP,
+                }
+            )
             return AttendanceRecord(
                 id=record_ref.id,
                 empleado_id=employee_id,
