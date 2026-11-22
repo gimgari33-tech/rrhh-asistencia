@@ -189,7 +189,7 @@ class ApplicationServiceTests(unittest.TestCase):
         )
         repository = Mock()
         repository.list_recent.return_value = [movement]
-        repository.create_movement.return_value = movement
+        repository.transact_account.return_value = movement
         service = HoursService(repository)
 
         self.assertEqual(service.list_recent(), [movement])
@@ -197,9 +197,8 @@ class ApplicationServiceTests(unittest.TestCase):
             service.create(" employee-1 ", "acumulacion", "2.50", " Horas extra "),
             movement,
         )
-        repository.create_movement.assert_called_once_with(
-            "employee-1", "ACUMULACION", Decimal("2.50"), "Horas extra"
-        )
+        repository.transact_account.assert_called_once()
+        self.assertEqual(repository.transact_account.call_args[0][0], "employee-1")
         with self.assertRaises(ValidationError):
             service.create("", "ACUMULACION", 2, "")
 

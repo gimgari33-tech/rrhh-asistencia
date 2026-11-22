@@ -9,7 +9,6 @@ from google.cloud import firestore as google_firestore
 
 from ..application.errors import ApplicationError, ServiceUnavailableError
 from ..domain.errors import DomainError, NotFoundError
-<<<<<<< HEAD
 from ..domain.models import (
     AttendanceRecord,
     CuentaBancoHoras,
@@ -19,10 +18,6 @@ from ..domain.models import (
     TipoMovimiento,
 )
 from ..domain.rules import movement_detail, positive_hours
-=======
-from ..domain.models import AttendanceRecord, Employee, HourMovement
-from ..domain.rules import next_balance
->>>>>>> main
 
 logger = logging.getLogger(__name__)
 
