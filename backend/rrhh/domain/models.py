@@ -24,7 +24,9 @@ class TipoMovimiento(str, Enum):
         try:
             return cls(str(value or "").upper())
         except ValueError:
-            raise ValidationError("El tipo debe ser ACUMULACION o DEVOLUCION.") from None
+            raise ValidationError(
+                "El tipo debe ser ACUMULACION o DEVOLUCION."
+            ) from None
 
 
 @dataclass(frozen=True)
@@ -131,7 +133,12 @@ class AuthorizedUser:
     rol: str
 
     def to_dict(self):
-        return {"uid": self.uid, "email": self.email, "nombre": self.nombre, "rol": self.rol}
+        return {
+            "uid": self.uid,
+            "email": self.email,
+            "nombre": self.nombre,
+            "rol": self.rol,
+        }
 
 
 @dataclass(frozen=True)
