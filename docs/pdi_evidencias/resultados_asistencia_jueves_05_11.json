@@ -1,0 +1,82 @@
+[
+  {
+    "legajo": "20740",
+    "nombre": "ALANCAY ALDO",
+    "estado": "Presente",
+    "horas_jornada": 8.0,
+    "horas_trabajadas": 4.57,
+    "diferencia_banco_horas": -3.43,
+    "olvido_salida": false,
+    "observaciones": "Presente con horas faltantes a compensar (-3.43h)."
+  },
+  {
+    "legajo": "65429",
+    "nombre": "ALVARADO CINTIA",
+    "estado": "Presente",
+    "horas_jornada": 5.0,
+    "horas_trabajadas": 5.05,
+    "diferencia_banco_horas": 0.05,
+    "olvido_salida": false,
+    "observaciones": "Presente con horas extra a favor (+0.05h)."
+  },
+  {
+    "legajo": "426884",
+    "nombre": "ACOSTA NICOLAS",
+    "estado": "Presente",
+    "horas_jornada": 8.0,
+    "horas_trabajadas": 8.43,
+    "diferencia_banco_horas": 0.43,
+    "olvido_salida": false,
+    "observaciones": "Presente con horas extra a favor (+0.43h)."
+  },
+  {
+    "legajo": "21097",
+    "nombre": "BARRIENTOS SILVIA",
+    "estado": "Falta sin aviso",
+    "horas_jornada": 8.0,
+    "horas_trabajadas": 0.0,
+    "diferencia_banco_horas": -8.0,
+    "olvido_salida": false,
+    "observaciones": "Sin registro de ingreso. Descuenta jornada contratada (8.0h)."
+  },
+  {
+    "legajo": "63365",
+    "nombre": "BARRIOS GONZALO",
+    "estado": "Falta sin aviso",
+    "horas_jornada": 8.0,
+    "horas_trabajadas": 0.0,
+    "diferencia_banco_horas": -8.0,
+    "olvido_salida": false,
+    "observaciones": "Sin registro de ingreso. Descuenta jornada contratada (8.0h)."
+  },
+  {
+    "legajo": "414770",
+    "nombre": "CAÑETE ROMINA",
+    "estado": "Presente",
+    "horas_jornada": 5.0,
+    "horas_trabajadas": 5.12,
+    "diferencia_banco_horas": 0.12,
+    "olvido_salida": false,
+    "observaciones": "Presente con horas extra a favor (+0.12h)."
+  },
+  {
+    "legajo": "413492",
+    "nombre": "CARRANZA ROBERTO",
+    "estado": "Presente",
+    "horas_jornada": 8.0,
+    "horas_trabajadas": 6.17,
+    "diferencia_banco_horas": -1.83,
+    "olvido_salida": false,
+    "observaciones": "Presente con horas faltantes a compensar (-1.83h)."
+  },
+  {
+    "legajo": "55939",
+    "nombre": "OBREGON DIEGO",
+    "estado": "Presente",
+    "horas_jornada": 8.0,
+    "horas_trabajadas": 8.0,
+    "diferencia_banco_horas": 0.0,
+    "olvido_salida": true,
+    "observaciones": "Presente. Fichaje de salida no registrado; se computa jornada contratada estándar."
+  }
+]
