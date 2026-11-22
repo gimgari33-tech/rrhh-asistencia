@@ -146,7 +146,9 @@ class AttendanceService:
 
 
 class CourseService:
-    def __init__(self, employee_repository: EmployeeRepository, repository: CourseRepository):
+    def __init__(
+        self, employee_repository: EmployeeRepository, repository: CourseRepository
+    ):
         self._employee_repository = employee_repository
         self._repository = repository
 

@@ -117,14 +117,23 @@ class CourseAssignment:
     fecha_completacion: date | None = None
 
     def __post_init__(self):
-        if not str(self.empleado_id or "").strip() or not str(self.curso_id or "").strip():
-            raise ValidationError("La asignación debe identificar al empleado y al curso.")
+        if (
+            not str(self.empleado_id or "").strip()
+            or not str(self.curso_id or "").strip()
+        ):
+            raise ValidationError(
+                "La asignación debe identificar al empleado y al curso."
+            )
         if not isinstance(self.completado, bool):
-            raise ValidationError("El estado de completitud del curso debe ser booleano.")
+            raise ValidationError(
+                "El estado de completitud del curso debe ser booleano."
+            )
         if self.completado and self.fecha_completacion is None:
             raise ValidationError("La fecha es obligatoria para un curso completado.")
         if not self.completado and self.fecha_completacion is not None:
-            raise ValidationError("Un curso pendiente no puede tener fecha de finalización.")
+            raise ValidationError(
+                "Un curso pendiente no puede tener fecha de finalización."
+            )
         if self.fecha_completacion is not None:
             object.__setattr__(
                 self,

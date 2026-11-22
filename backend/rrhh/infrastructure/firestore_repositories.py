@@ -314,15 +314,15 @@ class FirestoreCourseRepository:
     def create_course(self, name, description):
         def operation():
             reference = (
-                self._firebase_runtime.database()
-                .collection(self.COLLECTION)
-                .document()
+                self._firebase_runtime.database().collection(self.COLLECTION).document()
             )
-            reference.set({
-                "nombre": name,
-                "descripcion": description,
-                "creadoEn": admin_firestore.SERVER_TIMESTAMP,
-            })
+            reference.set(
+                {
+                    "nombre": name,
+                    "descripcion": description,
+                    "creadoEn": admin_firestore.SERVER_TIMESTAMP,
+                }
+            )
             return Course(id=reference.id, nombre=name, descripcion=description)
 
         return _run_firestore(operation, "No se pudo crear el curso.")
@@ -395,7 +395,9 @@ class FirestoreCourseRepository:
             )
             return completed_assignment
 
-        return _run_firestore(operation, "No se pudo registrar la finalización del curso.")
+        return _run_firestore(
+            operation, "No se pudo registrar la finalización del curso."
+        )
 
     def list_for_employee(self, employee_id):
         def operation():
@@ -414,7 +416,9 @@ class FirestoreCourseRepository:
                 for snapshot in assignments
             ]
 
-        return _run_firestore(operation, "No se pudieron cargar los cursos del empleado.")
+        return _run_firestore(
+            operation, "No se pudieron cargar los cursos del empleado."
+        )
 
     def list_pending(self):
         def operation():
@@ -422,7 +426,9 @@ class FirestoreCourseRepository:
             pending = []
             for employee_snapshot in database.collection("empleados").stream():
                 assignments = (
-                    employee_snapshot.reference.collection(self.ASSIGNMENTS_SUBCOLLECTION)
+                    employee_snapshot.reference.collection(
+                        self.ASSIGNMENTS_SUBCOLLECTION
+                    )
                     .where("completado", "==", False)
                     .stream()
                 )
@@ -435,7 +441,9 @@ class FirestoreCourseRepository:
                 )
             return pending
 
-        return _run_firestore(operation, "No se pudieron consultar los cursos pendientes.")
+        return _run_firestore(
+            operation, "No se pudieron consultar los cursos pendientes."
+        )
 
     @staticmethod
     def _course_from_snapshot(course_id, data):

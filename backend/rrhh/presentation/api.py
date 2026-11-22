@@ -115,9 +115,7 @@ def assign_course(employee_id):
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
         return jsonify({"error": "La asignación enviada no es válida."}), 400
-    assignment = _services()["courses"].assign(
-        employee_id, payload.get("curso_id")
-    )
+    assignment = _services()["courses"].assign(employee_id, payload.get("curso_id"))
     return jsonify(assignment.to_dict()), 201
 
 
@@ -127,12 +125,14 @@ def get_employee_courses(employee_id):
     course_service = _services()["courses"]
     assignments = course_service.list_for_employee(employee_id)
     pending = [assignment for assignment in assignments if not assignment.completado]
-    return jsonify({
-        "empleado_id": employee_id,
-        "asignaciones": [assignment.to_dict() for assignment in assignments],
-        "pendientes": [assignment.to_dict() for assignment in pending],
-        "porcentaje_completado": course_service.completion_percentage(assignments),
-    }), 200
+    return jsonify(
+        {
+            "empleado_id": employee_id,
+            "asignaciones": [assignment.to_dict() for assignment in assignments],
+            "pendientes": [assignment.to_dict() for assignment in pending],
+            "porcentaje_completado": course_service.completion_percentage(assignments),
+        }
+    ), 200
 
 
 @api.post("/employees/<employee_id>/courses/<course_id>/complete")

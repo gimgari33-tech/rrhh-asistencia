@@ -85,7 +85,9 @@ def course_name(value):
         raise ValidationError("El nombre del curso es obligatorio.")
     name = value.strip()
     if len(name) > 150:
-        raise ValidationError("El nombre del curso no puede superar los 150 caracteres.")
+        raise ValidationError(
+            "El nombre del curso no puede superar los 150 caracteres."
+        )
     return name
 
 
@@ -96,7 +98,9 @@ def course_description(value):
         raise ValidationError("La descripción del curso debe ser texto.")
     description = value.strip()
     if len(description) > 500:
-        raise ValidationError("La descripción del curso no puede superar los 500 caracteres.")
+        raise ValidationError(
+            "La descripción del curso no puede superar los 500 caracteres."
+        )
     return description
 
 
@@ -106,7 +110,9 @@ def completion_date(value):
     if isinstance(value, date):
         return value
     if not isinstance(value, str):
-        raise ValidationError("La fecha de finalización debe tener el formato AAAA-MM-DD.")
+        raise ValidationError(
+            "La fecha de finalización debe tener el formato AAAA-MM-DD."
+        )
     try:
         parsed = date.fromisoformat(value)
     except ValueError:
@@ -114,7 +120,9 @@ def completion_date(value):
             "La fecha de finalización debe tener el formato AAAA-MM-DD."
         ) from None
     if parsed.isoformat() != value:
-        raise ValidationError("La fecha de finalización debe tener el formato AAAA-MM-DD.")
+        raise ValidationError(
+            "La fecha de finalización debe tener el formato AAAA-MM-DD."
+        )
     return parsed
 
 
