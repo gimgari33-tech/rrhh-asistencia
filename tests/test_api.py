@@ -8,8 +8,12 @@ from unittest.mock import patch
 from backend.rrhh import create_app
 from backend.rrhh.application.errors import AuthenticationError, ServiceUnavailableError
 from backend.rrhh.domain.errors import NotFoundError
-from backend.rrhh.domain.models import AttendanceRecord, Employee, HourMovement
-from backend.rrhh.domain.rules import next_balance
+from backend.rrhh.domain.models import (
+    AttendanceRecord,
+    CuentaBancoHoras,
+    Employee,
+    HourMovement,
+)
 
 
 class FakeStore:
@@ -91,21 +95,25 @@ class FakeHoursRepository:
     def list_recent(self, limit=100):
         return list(reversed(self.store.movements[-limit:]))
 
-    def create_movement(self, employee_id, kind, hours, detail):
+    def transact_account(self, employee_id, operation):
         employee = self.store.employees.get(employee_id)
         if employee is None:
             raise NotFoundError("Empleado no encontrado.")
 
-        balance = next_balance(self.store.balances.get(employee_id, 0), hours, kind)
-        self.store.balances[employee_id] = balance
+        account = CuentaBancoHoras(
+            employee_id,
+            self.store.balances.get(employee_id, Decimal("0.00")),
+        )
+        domain_movement = operation(account)
+        self.store.balances[employee_id] = account.saldo_actual.valor
         movement = HourMovement(
             id=f"movement-{len(self.store.movements) + 1}",
             empleado_id=employee_id,
             empleado_nombre=employee.nombre,
-            tipo=kind,
-            horas=hours,
-            saldo_resultante=balance,
-            detalle=detail,
+            tipo=domain_movement.tipo.value,
+            horas=domain_movement.horas.valor,
+            saldo_resultante=domain_movement.saldo_resultante.valor,
+            detalle=domain_movement.detalle,
         )
         self.store.movements.append(movement)
         return movement
