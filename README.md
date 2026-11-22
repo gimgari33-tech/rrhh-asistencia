@@ -137,11 +137,14 @@ La asignación recibe `{"curso_id": "<courseId>"}`. La finalización acepta una 
 
 ## Ejecutar pruebas
 
-Las pruebas de la API usan identidad y repositorios simulados; no requieren credenciales ni escriben en el proyecto real de Firebase.
+Instalá las dependencias de desarrollo y corré la suite con cobertura. El comando falla si la cobertura de `backend.rrhh` es menor al 85 %.
 
 ```sh
-python -m unittest discover -s tests -v
+python -m pip install -r requirements-dev.txt
+python -m pytest --cov=backend.rrhh --cov-report=term-missing --cov-fail-under=85
 ```
+
+Las pruebas usan identidad y Firestore simulados; no requieren credenciales ni escriben en el proyecto real de Firebase.
 
 ## Colecciones de Firestore
 

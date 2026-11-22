@@ -4,7 +4,6 @@ import os
 
 from backend.rrhh import create_app
 
-
 app = create_app()
 
 

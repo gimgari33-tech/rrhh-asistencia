@@ -6,7 +6,7 @@ from typing import ClassVar
 from unittest.mock import patch
 
 from backend.rrhh import create_app
-from backend.rrhh.application.errors import AuthenticationError
+from backend.rrhh.application.errors import AuthenticationError, ServiceUnavailableError
 from backend.rrhh.domain.errors import NotFoundError
 from backend.rrhh.domain.models import (
     AttendanceRecord,
@@ -21,8 +21,16 @@ from backend.rrhh.domain.rules import next_balance
 class FakeStore:
     def __init__(self):
         self.authorized_users = {
-            "admin-uid": {"activo": True, "rol": "SUPERADMIN", "nombre": "Admin de prueba"},
-            "guest-uid": {"activo": True, "rol": "INVITADO", "nombre": "Invitado de prueba"},
+            "admin-uid": {
+                "activo": True,
+                "rol": "SUPERADMIN",
+                "nombre": "Admin de prueba",
+            },
+            "guest-uid": {
+                "activo": True,
+                "rol": "INVITADO",
+                "nombre": "Invitado de prueba",
+            },
             "disabled-uid": {"activo": False, "rol": "SUPERADMIN"},
         }
         self.employees = {}
@@ -43,6 +51,8 @@ class FakeIdentityProvider:
     }
 
     def verify_id_token(self, token):
+        if token == "service-down":
+            raise ServiceUnavailableError("Firebase no disponible.")
         if token not in self.TOKENS:
             raise AuthenticationError("Token de prueba inválido.")
         return self.TOKENS[token]
@@ -169,7 +179,10 @@ class FakeCourseRepository:
     def list_for_employee(self, employee_id):
         return [
             assignment
-            for (assigned_employee_id, _), assignment in self.store.course_assignments.items()
+            for (
+                assigned_employee_id,
+                _,
+            ), assignment in self.store.course_assignments.items()
             if assigned_employee_id == employee_id
         ]
 
@@ -187,7 +200,10 @@ class ApiTests(unittest.TestCase):
         employee_repository = FakeEmployeeRepository(self.store)
         patches = (
             patch("backend.rrhh.FirebaseRuntime", return_value=object()),
-            patch("backend.rrhh.FirebaseIdentityProvider", return_value=FakeIdentityProvider()),
+            patch(
+                "backend.rrhh.FirebaseIdentityProvider",
+                return_value=FakeIdentityProvider(),
+            ),
             patch(
                 "backend.rrhh.FirestoreAuthorizationRepository",
                 return_value=FakeAuthorizationRepository(self.store),
@@ -234,17 +250,25 @@ class ApiTests(unittest.TestCase):
         disabled_user = self.client.get(
             "/api/employees", headers=self.headers("disabled-token")
         )
+        unavailable = self.client.get(
+            "/api/auth/me", headers=self.headers("service-down")
+        )
 
         self.assertEqual(missing_token.status_code, 401)
         self.assertEqual(invalid_token.status_code, 401)
         self.assertEqual(disabled_user.status_code, 403)
+        self.assertEqual(unavailable.status_code, 503)
 
     def test_guest_cannot_escalate_role_with_a_request_header(self):
-        profile = self.client.get(
-            "/api/auth/me", headers=self.headers("guest-token")
-        )
+        profile = self.client.get("/api/auth/me", headers=self.headers("guest-token"))
         readable_employees = self.client.get(
             "/api/employees", headers=self.headers("guest-token")
+        )
+        readable_movements = self.client.get(
+            "/api/movements", headers=self.headers("guest-token")
+        )
+        readable_attendance = self.client.get(
+            "/api/attendance", headers=self.headers("guest-token")
         )
         response = self.client.post(
             "/api/employees",
@@ -258,6 +282,8 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(profile.status_code, 200)
         self.assertEqual(profile.get_json()["rol"], "INVITADO")
         self.assertEqual(readable_employees.status_code, 200)
+        self.assertEqual(readable_movements.status_code, 200)
+        self.assertEqual(readable_attendance.status_code, 200)
         self.assertEqual(response.status_code, 403)
         self.assertEqual(self.store.employees, {})
 
@@ -381,11 +407,15 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(len(pending_before), 1)
         self.assertEqual(employee_courses_before["porcentaje_completado"], 0.0)
         self.assertEqual(complete_response.status_code, 200)
-        self.assertEqual(complete_response.get_json()["fecha_completacion"], "2026-11-20")
+        self.assertEqual(
+            complete_response.get_json()["fecha_completacion"], "2026-11-20"
+        )
         self.assertEqual(pending_after, [])
         self.assertEqual(employee_courses_after["porcentaje_completado"], 100.0)
 
-    def test_course_mutations_require_superadmin_and_completion_requires_assignment(self):
+    def test_course_mutations_require_superadmin_and_completion_requires_assignment(
+        self,
+    ):
         guest_headers = self.headers("guest-token")
         employee = self.client.post(
             "/api/employees",
@@ -415,6 +445,38 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(create_for_guest.status_code, 403)
         self.assertEqual(assign_for_guest.status_code, 403)
         self.assertEqual(complete_unassigned.status_code, 404)
+
+    def test_api_rejects_malformed_movement_and_attendance_payloads(self):
+        headers = self.headers("admin-token")
+
+        movement = self.client.post("/api/movements", headers=headers)
+        attendance = self.client.post("/api/attendance", headers=headers)
+
+        self.assertEqual(movement.status_code, 400)
+        self.assertEqual(attendance.status_code, 400)
+
+    def test_api_returns_not_found_for_movement_of_unknown_employee(self):
+        response = self.client.post(
+            "/api/movements",
+            json={
+                "empleado_id": "missing-employee",
+                "tipo": "ACUMULACION",
+                "horas": 1,
+                "detalle": "Prueba",
+            },
+            headers=self.headers("admin-token"),
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_web_serves_index_and_allowlisted_assets_only(self):
+        index = self.client.get("/")
+        stylesheet = self.client.get("/static/css/styles.css")
+        private_file = self.client.get("/requirements.txt")
+
+        self.assertEqual(index.status_code, 200)
+        self.assertEqual(stylesheet.status_code, 200)
+        self.assertEqual(private_file.status_code, 404)
 
 
 if __name__ == "__main__":
