@@ -2,13 +2,14 @@
 
 from flask import Blueprint, abort, current_app, send_from_directory
 
-
 web = Blueprint("web", __name__)
-PUBLIC_ASSETS = frozenset({
-    "static/css/styles.css",
-    "static/js/app.js",
-    "static/js/firebase-config.js",
-})
+PUBLIC_ASSETS = frozenset(
+    {
+        "static/css/styles.css",
+        "static/js/app.js",
+        "static/js/firebase-config.js",
+    }
+)
 
 
 @web.get("/")

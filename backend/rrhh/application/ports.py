@@ -1,7 +1,8 @@
 """Interfaces for external services used by the application layer."""
 
+from collections.abc import Mapping
 from decimal import Decimal
-from typing import Mapping, Protocol
+from typing import Protocol
 
 from ..domain.models import AttendanceRecord, Employee, HourMovement
 
