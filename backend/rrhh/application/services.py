@@ -38,7 +38,9 @@ class AccessService:
         except ServiceUnavailableError:
             raise
         except Exception as error:
-            raise ServiceUnavailableError("No se pudo validar la sesión en este momento.") from error
+            raise ServiceUnavailableError(
+                "No se pudo validar la sesión en este momento."
+            ) from error
 
         uid = decoded.get("uid")
         if not isinstance(uid, str) or not uid:
@@ -46,7 +48,9 @@ class AccessService:
 
         access = self._authorization_repository.get_by_uid(uid)
         if not access or access.get("activo") is not True:
-            raise AuthorizationError("Tu cuenta no está habilitada para esta aplicación.")
+            raise AuthorizationError(
+                "Tu cuenta no está habilitada para esta aplicación."
+            )
 
         role = str(access.get("rol") or "INVITADO").upper()
         if role not in ROLES:

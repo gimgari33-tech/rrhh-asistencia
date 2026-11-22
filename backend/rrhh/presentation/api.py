@@ -4,7 +4,6 @@ from flask import Blueprint, current_app, g, jsonify, request
 
 from .auth import require_authorized_user
 
-
 api = Blueprint("api", __name__, url_prefix="/api")
 
 
