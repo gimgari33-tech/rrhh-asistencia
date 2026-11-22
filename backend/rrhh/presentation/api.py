@@ -81,3 +81,71 @@ def create_attendance():
         payload.get("fecha"),
     )
     return jsonify(record.to_dict()), 201
+
+
+@api.get("/courses")
+@require_authorized_user()
+def get_courses():
+    courses = _services()["courses"].list_courses()
+    return jsonify([course.to_dict() for course in courses]), 200
+
+
+@api.post("/courses")
+@require_authorized_user("SUPERADMIN")
+def create_course():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "El curso enviado no es válido."}), 400
+    course = _services()["courses"].create(
+        payload.get("nombre"), payload.get("descripcion", "")
+    )
+    return jsonify(course.to_dict()), 201
+
+
+@api.get("/courses/pending")
+@require_authorized_user()
+def get_pending_courses():
+    assignments = _services()["courses"].list_pending()
+    return jsonify([assignment.to_dict() for assignment in assignments]), 200
+
+
+@api.post("/employees/<employee_id>/courses")
+@require_authorized_user("SUPERADMIN")
+def assign_course(employee_id):
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "La asignación enviada no es válida."}), 400
+    assignment = _services()["courses"].assign(employee_id, payload.get("curso_id"))
+    return jsonify(assignment.to_dict()), 201
+
+
+@api.get("/employees/<employee_id>/courses")
+@require_authorized_user()
+def get_employee_courses(employee_id):
+    course_service = _services()["courses"]
+    assignments = course_service.list_for_employee(employee_id)
+    pending = [assignment for assignment in assignments if not assignment.completado]
+    return jsonify(
+        {
+            "empleado_id": employee_id,
+            "asignaciones": [assignment.to_dict() for assignment in assignments],
+            "pendientes": [assignment.to_dict() for assignment in pending],
+            "porcentaje_completado": course_service.completion_percentage(assignments),
+        }
+    ), 200
+
+
+@api.post("/employees/<employee_id>/courses/<course_id>/complete")
+@require_authorized_user("SUPERADMIN")
+def complete_employee_course(employee_id, course_id):
+    payload = request.get_json(silent=True)
+    if payload is None:
+        payload = {}
+    if not isinstance(payload, dict):
+        return jsonify({"error": "La fecha de finalización enviada no es válida."}), 400
+    assignment = _services()["courses"].complete(
+        employee_id,
+        course_id,
+        payload.get("fecha_completacion"),
+    )
+    return jsonify(assignment.to_dict()), 200

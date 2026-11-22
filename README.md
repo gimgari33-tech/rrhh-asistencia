@@ -19,6 +19,7 @@ GitHub Pages publica archivos estáticos y por eso ofrece únicamente la demo. P
 - Consultar saldos e historial de movimientos.
 - Acumular horas y registrar devoluciones con detalle.
 - Rechazar devoluciones que superen el saldo disponible.
+- Crear cursos obligatorios, asignarlos por empleado, registrar su finalización y consultar pendientes.
 - Probar la demo sin modificar datos reales.
 
 La carga de horas es manual. El cálculo automático por jornada o período queda sujeto a las reglas de negocio pendientes de definición.
@@ -125,6 +126,14 @@ Cloud Run recibe solicitudes públicas, pero los endpoints de datos requieren un
 | `POST` | `/api/movements` | `SUPERADMIN` |
 | `GET` | `/api/attendance` | usuario habilitado |
 | `POST` | `/api/attendance` | `SUPERADMIN` |
+| `GET` | `/api/courses` | usuario habilitado |
+| `POST` | `/api/courses` | `SUPERADMIN` |
+| `GET` | `/api/courses/pending` | usuario habilitado |
+| `POST` | `/api/employees/{employeeId}/courses` | `SUPERADMIN` |
+| `GET` | `/api/employees/{employeeId}/courses` | usuario habilitado; incluye porcentaje completado |
+| `POST` | `/api/employees/{employeeId}/courses/{courseId}/complete` | `SUPERADMIN` |
+
+La asignación recibe `{"curso_id": "<courseId>"}`. La finalización acepta una fecha opcional con formato `AAAA-MM-DD`; si no se envía, se registra la fecha actual. La asignación es idempotente: volver a asignar el mismo curso no borra su estado de finalización.
 
 ## Ejecutar pruebas
 
@@ -144,6 +153,8 @@ Las pruebas usan identidad y Firestore simulados; no requieren credenciales ni e
 - `bancos_horas/{empleadoId}`: saldo actual.
 - `movimientos_banco_horas/{movimientoId}`: tipo, horas, detalle y saldo resultante.
 - `asistencia/{registroId}`: empleado, estado, fecha y fecha de carga.
+- `cursos/{cursoId}`: nombre y descripción del curso obligatorio.
+- `empleados/{empleadoId}/cursos_asignados/{cursoId}`: curso asignado, estado de cumplimiento y fecha de finalización.
 
 Cada acumulación o devolución actualiza el saldo y crea el movimiento dentro de una transacción de Firestore.
 

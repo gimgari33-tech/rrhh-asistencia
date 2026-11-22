@@ -6,6 +6,7 @@ from .application.errors import ApplicationError
 from .application.services import (
     AccessService,
     AttendanceService,
+    CourseService,
     EmployeeService,
     HoursService,
 )
@@ -16,6 +17,7 @@ from .infrastructure.firebase_identity import FirebaseIdentityProvider
 from .infrastructure.firestore_repositories import (
     FirestoreAttendanceRepository,
     FirestoreAuthorizationRepository,
+    FirestoreCourseRepository,
     FirestoreEmployeeRepository,
     FirestoreHoursRepository,
 )
@@ -32,6 +34,7 @@ def create_app(config=None):
 
     firebase_runtime = FirebaseRuntime(app.config["FIREBASE_PROJECT_ID"])
     employee_repository = FirestoreEmployeeRepository(firebase_runtime)
+    course_repository = FirestoreCourseRepository(firebase_runtime)
     app.extensions["rrhh_services"] = {
         "access": AccessService(
             FirebaseIdentityProvider(firebase_runtime),
@@ -43,6 +46,7 @@ def create_app(config=None):
             employee_repository,
             FirestoreAttendanceRepository(firebase_runtime),
         ),
+        "courses": CourseService(employee_repository, course_repository),
     }
 
     @app.errorhandler(DomainError)

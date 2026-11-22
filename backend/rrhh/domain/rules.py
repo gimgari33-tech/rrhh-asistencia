@@ -1,6 +1,6 @@
 """Business rules that do not depend on Flask or Firebase."""
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
 from .errors import ValidationError
@@ -78,6 +78,61 @@ def attendance_status(value):
     if not isinstance(value, str) or value not in ATTENDANCE_STATUSES:
         raise ValidationError("El estado de asistencia no es válido.")
     return value
+
+
+def course_name(value):
+    if not isinstance(value, str) or not value.strip():
+        raise ValidationError("El nombre del curso es obligatorio.")
+    name = value.strip()
+    if len(name) > 150:
+        raise ValidationError(
+            "El nombre del curso no puede superar los 150 caracteres."
+        )
+    return name
+
+
+def course_description(value):
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise ValidationError("La descripción del curso debe ser texto.")
+    description = value.strip()
+    if len(description) > 500:
+        raise ValidationError(
+            "La descripción del curso no puede superar los 500 caracteres."
+        )
+    return description
+
+
+def completion_date(value):
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if not isinstance(value, str):
+        raise ValidationError(
+            "La fecha de finalización debe tener el formato AAAA-MM-DD."
+        )
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError:
+        raise ValidationError(
+            "La fecha de finalización debe tener el formato AAAA-MM-DD."
+        ) from None
+    if parsed.isoformat() != value:
+        raise ValidationError(
+            "La fecha de finalización debe tener el formato AAAA-MM-DD."
+        )
+    return parsed
+
+
+def course_completion_percentage(assignments):
+    if not assignments:
+        return Decimal("0.00")
+    completed = sum(assignment.completado is True for assignment in assignments)
+    return (Decimal(completed) * Decimal(100) / Decimal(len(assignments))).quantize(
+        Decimal("0.01")
+    )
 
 
 def next_balance(current_balance, hours, kind):
