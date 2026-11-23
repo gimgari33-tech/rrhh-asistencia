@@ -156,6 +156,7 @@ Cada acumulación o devolución actualiza el saldo y crea el movimiento dentro d
 - [Reglas de negocio](docs/05-reglas-de-negocio.md)
 - [Arquitectura](docs/arquitectura.md)
 - [Contribuir](CONTRIBUTING.md)
+- [Informe técnico y guía para la defensa](docs/07-informe-tecnico-defensa.md)
 
 ## Privacidad y seguridad
 
