@@ -23,11 +23,11 @@
     "legajo": "426884",
     "nombre": "ACOSTA NICOLAS",
     "estado": "Presente",
-    "horas_jornada": 8.0,
+    "horas_jornada": 5.0,
     "horas_trabajadas": 8.43,
-    "diferencia_banco_horas": 0.43,
+    "diferencia_banco_horas": 3.43,
     "olvido_salida": false,
-    "observaciones": "Presente con horas extra a favor (+0.43h)."
+    "observaciones": "Presente con horas extra a favor (+3.43h)."
   },
   {
     "legajo": "21097",
@@ -63,11 +63,11 @@
     "legajo": "413492",
     "nombre": "CARRANZA ROBERTO",
     "estado": "Presente",
-    "horas_jornada": 8.0,
+    "horas_jornada": 5.0,
     "horas_trabajadas": 6.17,
-    "diferencia_banco_horas": -1.83,
+    "diferencia_banco_horas": 1.17,
     "olvido_salida": false,
-    "observaciones": "Presente con horas faltantes a compensar (-1.83h)."
+    "observaciones": "Presente con horas extra a favor (+1.17h)."
   },
   {
     "legajo": "55939",

@@ -564,13 +564,13 @@
     {
       legajo: "426884",
       nombre: "ACOSTA NICOLAS",
-      jornada: 8.0,
+      jornada: 5.0,
       entrada: "10:41",
       salida: "19:07",
       estado: "Presente",
       horasTrabajadas: 8.43,
-      diferencia: 0.43,
-      observacion: "Presente con horas extra a favor (+0.43h)."
+      diferencia: 3.43,
+      observacion: "Presente con horas extra a favor (+3.43h)."
     },
     {
       legajo: "21097",
@@ -608,13 +608,13 @@
     {
       legajo: "413492",
       nombre: "CARRANZA ROBERTO",
-      jornada: 8.0,
+      jornada: 5.0,
       entrada: "15:20",
       salida: "21:30",
       estado: "Presente",
       horasTrabajadas: 6.17,
-      diferencia: -1.83,
-      observacion: "Presente con horas faltantes a compensar (-1.83h)."
+      diferencia: 1.17,
+      observacion: "Presente con horas extra a favor (+1.17h). (Anotación +1 en libro)"
     },
     {
       legajo: "55939",

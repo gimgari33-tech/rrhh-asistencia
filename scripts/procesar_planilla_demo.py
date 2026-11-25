@@ -77,7 +77,7 @@ def main():
         ConfiguracionEmpleado(
             legajo="426884",
             nombre="ACOSTA NICOLAS",
-            jornada_horas=JORNADA_8_HORAS,
+            jornada_horas=JORNADA_5_HORAS,
             dia_franco_semanal=6,
         ),
         ConfiguracionEmpleado(
@@ -101,7 +101,7 @@ def main():
         ConfiguracionEmpleado(
             legajo="413492",
             nombre="CARRANZA ROBERTO",
-            jornada_horas=JORNADA_8_HORAS,
+            jornada_horas=JORNADA_5_HORAS,
             dia_franco_semanal=6,
         ),
         ConfiguracionEmpleado(
