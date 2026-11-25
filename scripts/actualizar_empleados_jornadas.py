@@ -52,7 +52,7 @@ for e in emps:
 for e in emps:
     nombre = e.get("nombre", "").upper()
     es_5h = (
-        any(p in nombre for p in ["COSTILLA", "VIRE", "CASTILLO, JORGE", "CASTILLO ALFREDO", "PRIOR", "PAEZ", "ALVARADO", "CAÑETE", "ACOSTA", "CARRANZA", "BERNAL"])
+        any(p in nombre for p in ["COSTILLA", "VIRE", "CASTILLO, JORGE", "CASTILLO ALFREDO", "PRIOR", "PAEZ", "ALVARADO", "CAÑETE", "ACOSTA", "CARRANZA", "BERNAL", "JORGE, MAXIMILIANO", "MAXIMILIANO JORGE"])
         or (nombre == "CASTILLO JORGE")
     )
     if es_5h:

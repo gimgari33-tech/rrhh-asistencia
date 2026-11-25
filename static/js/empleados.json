@@ -273,7 +273,7 @@
     "legajo": "420880",
     "dni": "33678925",
     "nombre": "JORGE, MAXIMILIANO",
-    "horasJornada": "8 horas",
+    "horasJornada": "5 horas",
     "fechaIngreso": "",
     "usuario": "mgjorge",
     "telefono": "1167806077",
@@ -281,7 +281,7 @@
     "direccion": "Americo 4374 Villa Ballester c.p. 1653",
     "email": "mgjorge@local.com",
     "rol": "empleado",
-    "horas_jornada_numero": 8.0,
+    "horas_jornada_numero": 5.0,
     "franco_semanal": "1 franco por semana (lunes a domingo)"
   },
   {

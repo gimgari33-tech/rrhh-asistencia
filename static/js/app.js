@@ -617,6 +617,17 @@
       observacion: "Presente con horas extra a favor (+1.17h). (Anotación +1 en libro)"
     },
     {
+      legajo: "420880",
+      nombre: "JORGE, MAXIMILIANO",
+      jornada: 5.0,
+      entrada: "16:00",
+      salida: "21:00",
+      estado: "Presente",
+      horasTrabajadas: 5.0,
+      diferencia: 0.0,
+      observacion: "Presente con cumplimiento exacto de jornada (5.0h)."
+    },
+    {
       legajo: "55939",
       nombre: "OBREGON DIEGO",
       jornada: 8.0,
