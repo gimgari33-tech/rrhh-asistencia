@@ -50,6 +50,7 @@
         <nav class="sidebar" aria-label="Secciones">
           <button class="nav-button active" data-target="attendance-panel" type="button">Asistencia</button>
           <button class="nav-button" data-target="hours-panel" type="button">Banco de horas</button>
+          <button class="nav-button" data-target="vision-panel" type="button">📷 Escanear Planilla (PDI)</button>
         </nav>
 
         <div class="content-area">
@@ -156,6 +157,106 @@
               <p id="empty-movements" class="empty-state hidden">Aún no hay movimientos registrados.</p>
             </div>
             <p id="hours-message" class="message" role="status"></p>
+          </section>
+
+          <section id="vision-panel" class="panel hidden">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">VISIÓN ARTIFICIAL · PDI (PROCESAMIENTO DIGITAL DE IMÁGENES)</p>
+                <h2>Digitalizar Planilla de Asistencia Física</h2>
+                <p>Digitalizá la foto del libro de firmas diario mediante OpenCV: corrige perspectiva, elimina sombras con Otsu, detecta la cuadrícula morfológicamente y clasifica presentes/ausentes para impactar en el Banco de Horas.</p>
+              </div>
+            </div>
+
+            <div class="section-grid">
+              <div class="form-card compact-card">
+                <h3>1. Cargar foto del libro de firmas</h3>
+                <p class="privacy-note">Podés cargar la foto real del libro manuscrito (Jueves 05/11) o subir una foto nueva desde tu computadora o celular.</p>
+                <div class="button-row" style="margin-top: 1rem; gap: 0.5rem; flex-wrap: wrap;">
+                  <button id="load-real-sheet-btn" class="button button-primary" type="button">📄 Cargar Foto Real (Jueves 05/11)</button>
+                  <label class="button button-secondary" style="cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">
+                    📁 Subir otra foto
+                    <input id="upload-sheet-input" type="file" accept="image/*" style="display: none;">
+                  </label>
+                </div>
+                <div style="margin-top: 1rem;">
+                  <button id="process-vision-btn" class="button button-primary" style="width: 100%;" type="button">⚡ Procesar con Visión Artificial (OpenCV)</button>
+                </div>
+              </div>
+
+              <div class="form-card compact-card" id="vision-status-card">
+                <h3>2. Estado del Procesamiento</h3>
+                <div id="vision-status-msg" style="padding: 0.5rem 0;">
+                  <p>Hacé clic en <strong>"Cargar Foto Real"</strong> y luego en <strong>"Procesar con Visión Artificial"</strong> para ver el pipeline completo y el cálculo automático de horas.</p>
+                </div>
+                <div id="vision-summary" class="hidden" style="margin-top: 0.5rem; border-top: 1px solid #334155; padding-top: 0.5rem;">
+                  <p><strong>Filas analizadas:</strong> <span id="v-count">8</span> empleados</p>
+                  <p><strong>Presentes:</strong> <span id="v-present" style="color: #10b981; font-weight: bold;">6</span> | <strong>Faltas sin aviso:</strong> <span id="v-absent" style="color: #ef4444; font-weight: bold;">2</span></p>
+                  <button id="apply-to-bank-btn" class="button button-primary" style="margin-top: 0.75rem; width: 100%;" type="button">💾 Aplicar al Banco de Horas y Asistencia</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pipeline Visual: Antes y Después para la defensa de cátedra -->
+            <div id="vision-pipeline-display" class="table-card hidden" style="margin-top: 1.5rem;">
+              <div class="table-heading">
+                <div>
+                  <h3>Pipeline de Visión Artificial (Demostración de Cátedra · M1, M2 y M3)</h3>
+                  <p>Transformaciones de imagen para pasar de la foto torcida y con sombras a datos estructurados.</p>
+                </div>
+              </div>
+              <div class="section-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; padding: 1rem;">
+                <div style="text-align: center; background: #1e293b; padding: 0.75rem; border-radius: 8px;">
+                  <h4 style="font-size: 0.85rem; margin-bottom: 0.5rem; color: #94a3b8;">1. Foto Original</h4>
+                  <img id="img-step-1" src="static/img/pdi_evidencias/01_original.jpg" alt="Foto Original" style="max-width: 100%; height: 180px; object-fit: contain; border-radius: 4px; border: 1px solid #334155;">
+                  <p style="font-size: 0.75rem; color: #cbd5e1; margin-top: 0.4rem;">Foto inclinada de celular con sombras de iluminación.</p>
+                </div>
+                <div style="text-align: center; background: #1e293b; padding: 0.75rem; border-radius: 8px;">
+                  <h4 style="font-size: 0.85rem; margin-bottom: 0.5rem; color: #94a3b8;">2. Perspectiva Corregida</h4>
+                  <img id="img-step-2" src="static/img/pdi_evidencias/02_perspectiva_corregida.jpg" alt="Perspectiva" style="max-width: 100%; height: 180px; object-fit: contain; border-radius: 4px; border: 1px solid #334155;">
+                  <p style="font-size: 0.75rem; color: #cbd5e1; margin-top: 0.4rem;">Homografía de 4 puntos y warpPerspective.</p>
+                </div>
+                <div style="text-align: center; background: #1e293b; padding: 0.75rem; border-radius: 8px;">
+                  <h4 style="font-size: 0.85rem; margin-bottom: 0.5rem; color: #94a3b8;">3. Binarización Otsu</h4>
+                  <img id="img-step-3" src="static/img/pdi_evidencias/03_binarizada_otsu.jpg" alt="Binarización" style="max-width: 100%; height: 180px; object-fit: contain; border-radius: 4px; border: 1px solid #334155;">
+                  <p style="font-size: 0.75rem; color: #cbd5e1; margin-top: 0.4rem;">Umbral bimodal para remoción total de sombras y fondo.</p>
+                </div>
+                <div style="text-align: center; background: #1e293b; padding: 0.75rem; border-radius: 8px;">
+                  <h4 style="font-size: 0.85rem; margin-bottom: 0.5rem; color: #94a3b8;">4. Grilla Segmentada</h4>
+                  <img id="img-step-4" src="static/img/pdi_evidencias/04_grilla_detectada.jpg" alt="Grilla" style="max-width: 100%; height: 180px; object-fit: contain; border-radius: 4px; border: 1px solid #334155;">
+                  <p style="font-size: 0.75rem; color: #cbd5e1; margin-top: 0.4rem;">Morfología matemática (kernels rectangulares H y V).</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tabla de Resultados Extraídos -->
+            <div id="vision-results-table" class="table-card hidden" style="margin-top: 1.5rem;">
+              <div class="table-heading">
+                <div>
+                  <h3>Resultados Extraídos y Cómputo del Banco de Horas (Jueves 05/11)</h3>
+                  <p>Clasificación automática: cálculo de horas efectivas vs jornada contractual (8h / 5h) y tolerancia a olvido de salida.</p>
+                </div>
+              </div>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Legajo</th>
+                      <th>Empleado</th>
+                      <th>Jornada</th>
+                      <th>Entrada</th>
+                      <th>Salida</th>
+                      <th>Estado</th>
+                      <th>Horas Trab.</th>
+                      <th>Dif. Banco Horas</th>
+                      <th>Observación de Negocio</th>
+                    </tr>
+                  </thead>
+                  <tbody id="vision-results-body"></tbody>
+                </table>
+              </div>
+            </div>
+            <p id="vision-message" class="message" role="status"></p>
           </section>
         </div>
       </div>
