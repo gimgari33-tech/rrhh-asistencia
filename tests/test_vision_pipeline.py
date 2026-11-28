@@ -20,8 +20,12 @@ from backend.rrhh.vision.image_processing import (
     calcular_densidad_tinta,
     clasificar_celda_marcada,
     corregir_perspectiva,
+    densidad_celda_limpia,
+    detectar_esquinas_hoja,
+    detectar_posiciones_lineas,
     extraer_lineas_grilla,
     ordenar_puntos,
+    recortar_celdas,
 )
 from backend.rrhh.vision.service import (
     ServicioAsistenciaVision,
@@ -109,6 +113,86 @@ class VisionContractsAndProcessingTests(unittest.TestCase):
 
         # Celda vacía edge-cases
         self.assertEqual(calcular_densidad_tinta(np.array([])), 0.0)
+
+
+class VisionPipelineStepsTests(unittest.TestCase):
+    """Pruebas sintéticas de los pasos 1 a 4 del pipeline (limpieza, extracción y decisión)."""
+
+    def _hoja_sintetica(self):
+        img = np.full((500, 400, 3), 230, dtype=np.uint8)
+        cv2.rectangle(img, (40, 50), (340, 430), (20, 20, 20), 3)
+        return img
+
+    def test_detectar_esquinas_hoja_finds_four_corners(self):
+        esquinas = detectar_esquinas_hoja(self._hoja_sintetica())
+        self.assertIsNotNone(esquinas)
+        self.assertEqual(esquinas.shape, (4, 2))
+        np.testing.assert_allclose(esquinas[0], [40, 50], atol=6)  # superior-izquierda
+        np.testing.assert_allclose(esquinas[2], [340, 430], atol=6)  # inferior-derecha
+
+    def test_detectar_esquinas_hoja_returns_none_without_sheet(self):
+        self.assertIsNone(detectar_esquinas_hoja(np.full((200, 200, 3), 128, np.uint8)))
+        with self.assertRaises(ValueError):
+            detectar_esquinas_hoja(np.array([]))
+
+    def test_corregir_perspectiva_uses_real_sheet_proportion(self):
+        img = self._hoja_sintetica()
+        esquinas = np.array(
+            [[40, 50], [340, 50], [340, 430], [40, 430]], dtype="float32"
+        )
+        salida = corregir_perspectiva(img, esquinas=esquinas)
+        self.assertEqual(salida.shape[:2], (380, 300))  # alto x ancho de la hoja real
+
+    def test_corregir_perspectiva_raises_when_no_sheet_detected(self):
+        blanco = np.full((200, 200, 3), 255, np.uint8)
+        with self.assertRaises(ValueError):
+            corregir_perspectiva(blanco)
+
+    def test_binarizar_normalizado_removes_gradient_shadow(self):
+        # Fondo con sombra en degradé y una línea oscura fina
+        gradiente = np.tile(np.linspace(60, 220, 300, dtype=np.uint8), (200, 1))
+        cv2.line(gradiente, (0, 100), (299, 100), 0, 3)
+        binaria = binarizar_imagen(gradiente, metodo="normalizado")
+        self.assertEqual(binaria.shape, (200, 300))
+        self.assertTrue(set(np.unique(binaria)).issubset({0, 255}))
+        # La línea queda marcada y el fondo casi no
+        self.assertGreater(np.count_nonzero(binaria[98:103]), 0)
+        self.assertLess(np.count_nonzero(binaria[:90]) / binaria[:90].size, 0.05)
+
+    def test_detectar_posiciones_lineas_returns_grid_positions(self):
+        mascara = np.zeros((200, 300), np.uint8)
+        for y in (30, 80, 130):
+            mascara[y, :] = 255
+        for x in (50, 150, 250):
+            mascara[:, x] = 255
+        self.assertEqual(detectar_posiciones_lineas(mascara, eje=0), [30, 80, 130])
+        self.assertEqual(detectar_posiciones_lineas(mascara, eje=1), [50, 150, 250])
+        self.assertEqual(
+            detectar_posiciones_lineas(np.zeros((10, 10), np.uint8), eje=0), []
+        )
+        self.assertEqual(detectar_posiciones_lineas(np.array([]), eje=0), [])
+
+    def test_detectar_posiciones_lineas_merges_thick_lines(self):
+        mascara = np.zeros((100, 100), np.uint8)
+        mascara[40:43, :] = 255  # línea de 3 px: un solo renglón detectado
+        self.assertEqual(detectar_posiciones_lineas(mascara, eje=0), [41])
+
+    def test_recortar_celdas_grid_shape_and_margin(self):
+        binaria = np.full((120, 200), 255, np.uint8)
+        filas = recortar_celdas(
+            binaria, ys=[0, 40, 80, 120], xs=[0, 100, 200], margen=4
+        )
+        self.assertEqual(len(filas), 3)
+        self.assertEqual(len(filas[0]), 2)
+        self.assertEqual(filas[0][0].shape, (32, 92))
+
+    def test_densidad_celda_limpia_ignores_isolated_dots(self):
+        self.assertEqual(densidad_celda_limpia(np.array([])), 0.0)
+        celda = np.zeros((40, 80), np.uint8)
+        celda[20, 40] = 255  # punto aislado: ruido
+        self.assertEqual(densidad_celda_limpia(celda), 0.0)
+        cv2.line(celda, (10, 20), (70, 20), 255, 4)  # trazo real de firma
+        self.assertGreater(densidad_celda_limpia(celda), 0.05)
 
 
 class VisionAttendanceServiceBusinessRuleTests(unittest.TestCase):

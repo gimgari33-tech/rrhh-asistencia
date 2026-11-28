@@ -72,4 +72,4 @@ El pipeline aplica las siguientes transformaciones matemáticas y morfológicas:
 | **413492** | CARRANZA ROBERTO | 8.0h | 15:20 | 21:30 | **Presente** | $-1.83\text{h}$ | Horas faltantes a compensar |
 | **55939** | OBREGON DIEGO | 8.0h | 06:42 | - | **Presente** | $0.00\text{h}$ | Olvido salida; jornada estándar |
 
-Tasa de acierto del modelo en detección de presencia/ausencia: **$100\%$** sobre el lote de prueba.
+Tasa de acierto del modelo en detección de presencia/ausencia: **pendiente de medición** con fotos nuevas y ground truth; el valor anterior de 100 % correspondía a densidades tipeadas a mano y se retiró.
