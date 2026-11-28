@@ -46,7 +46,7 @@
 * **Linters:** Se utilizó Ruff. Los 8 errores iniciales fueron corregidos; `ruff check .` y `ruff format --check .` presentan **0 errores**.
 * **Medición que valida que el sistema funciona:**
   1. **Cobertura de tests:** 99 % sobre el backend (`backend.rrhh`).
-  2. **Tasa de acierto del modelo de visión:** 100 % de clasificación correcta en la planilla real ensayada del 05/11.
+  2. **Tasa de acierto del modelo de visión:** *pendiente de medición.* La foto del 05/11 no permite medirla: la hoja no muestra sus 4 bordes y la grilla no se separa en 6 columnas, así que las densidades de esa foto eran valores tipeados y no un resultado del pipeline. Se medirá con 2 o 3 fotos nuevas y su CSV de verdad (`scripts/procesar_planilla_demo.py --verdad`), con exactitud, precisión y recall de Ausente.
   3. **Integridad del corte de ciclo:** Comprobación matemática en `calcular_corte_periodo` de que la suma de horas extra menos faltantes coincide exactamente con el saldo neto resultante.
 
 ---
